@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: fapp
+
+  # Connection details come from the environment. Every value has a safe,
+  # non-secret local default matching docker-compose.yml, so a fresh clone runs
+  # with `docker compose up -d` and nothing else — no .env, no IDE setup.
+  # A real deployment overrides these (or sets SPRING_DATASOURCE_URL directly,
+  # which takes precedence over the URL composed below).
+  datasource:
+    url: jdbc:postgresql://${FAPP_DB_HOST:localhost}:${FAPP_DB_PORT:5432}/${FAPP_DB_NAME:fapp}
+    username: ${FAPP_DB_USER:fapp}
+    password: ${FAPP_DB_PASSWORD:fapp}
+
+  # Flyway owns the schema. Hibernate must never create or alter it.
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${FAPP_SERVER_PORT:8080}

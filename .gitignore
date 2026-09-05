@@ -37,3 +37,10 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Local environment / secrets ###
+# Nothing environment-related is tracked: no .env, and no committed template.
+# The variable names and their local defaults are documented in README.md.
+.env
+*.env
+.env.example
