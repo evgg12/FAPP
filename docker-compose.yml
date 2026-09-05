@@ -1,0 +1,27 @@
+# Local development infrastructure: PostgreSQL only.
+# The application itself is run from the IDE or via ./mvnw spring-boot:run.
+#
+# The defaults below are deliberately identical to the ones in
+# src/main/resources/application.yml, so the container and the application
+# always agree without an .env file. Override via .env for anything else.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fapp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${FAPP_DB_NAME:-fapp}
+      POSTGRES_USER: ${FAPP_DB_USER:-fapp}
+      POSTGRES_PASSWORD: ${FAPP_DB_PASSWORD:-fapp}
+    ports:
+      - "${FAPP_DB_PORT:-5432}:5432"
+    volumes:
+      - fapp-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FAPP_DB_USER:-fapp} -d ${FAPP_DB_NAME:-fapp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fapp-postgres-data:

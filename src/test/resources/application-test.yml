@@ -1,0 +1,12 @@
+# Test configuration.
+#
+# The persistence layer is excluded here because there are no entities, no domain
+# tables and no test database yet: these tests cover application wiring and the
+# HTTP layer only. Migrations and repositories get real coverage when
+# Testcontainers-backed integration tests are introduced (Phase 8).
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
