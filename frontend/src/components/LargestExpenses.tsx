@@ -7,11 +7,13 @@ import { day, label, money } from '../format'
 export function LargestExpenses({ state }: { state: AsyncState<LargestExpense[]> }) {
   return (
     <section className="panel">
-      <h2>Largest expenses</h2>
-      <Async state={state} empty="No spending in this period.">
+      <div className="panel-head">
+        <h2>Largest expenses</h2>
+      </div>
+      <Async state={state} empty="No spending in this period." lines={4}>
         {(expenses) => (
           <div className="scroll">
-            <table>
+            <table className="cards">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -24,11 +26,11 @@ export function LargestExpenses({ state }: { state: AsyncState<LargestExpense[]>
               <tbody>
                 {expenses.map((expense) => (
                   <tr key={expense.transactionId}>
-                    <td>{day(expense.bookingDate)}</td>
-                    <td>{expense.merchant ?? expense.description}</td>
-                    <td>{label(expense.category)}</td>
-                    <td>{expense.accountName}</td>
-                    <td className="right tone-down">{money(expense.amount)}</td>
+                    <td data-label="Date" className="card-title">{day(expense.bookingDate)}</td>
+                    <td data-label="Description">{expense.merchant ?? expense.description}</td>
+                    <td data-label="Category">{label(expense.category)}</td>
+                    <td data-label="Account">{expense.accountName}</td>
+                    <td data-label="Amount" className="right tone-down">{money(expense.amount)}</td>
                   </tr>
                 ))}
               </tbody>

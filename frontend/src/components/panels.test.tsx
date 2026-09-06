@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import type { AsyncState } from '../hooks/useAsync'
-import type { CategorySummary, FinancialSummary, Transaction } from '../api/types'
+import type {
+  CategorySummary,
+  FinancialSummary,
+  Transaction,
+} from '../api/types'
 import { CategoryBreakdown } from './CategoryBreakdown'
 import { SummaryPanel } from './SummaryPanel'
 import { TransactionList } from './TransactionList'
@@ -10,6 +14,10 @@ import { TransactionList } from './TransactionList'
 function loaded<T>(data: T): AsyncState<T> {
   return { loading: false, data }
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 const SUMMARY: FinancialSummary = {
   period: { from: '2026-08-01', to: '2026-09-01' },

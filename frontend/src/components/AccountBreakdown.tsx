@@ -7,11 +7,13 @@ import { label, money } from '../format'
 export function AccountBreakdown({ state }: { state: AsyncState<AccountSummary[]> }) {
   return (
     <section className="panel">
-      <h2>By account</h2>
-      <Async state={state} empty="No accounts yet.">
+      <div className="panel-head">
+        <h2>By account</h2>
+      </div>
+      <Async state={state} empty="No accounts yet. Add one to get started." lines={4}>
         {(accounts) => (
           <div className="scroll">
-            <table>
+            <table className="cards">
               <thead>
                 <tr>
                   <th>Account</th>
@@ -25,14 +27,17 @@ export function AccountBreakdown({ state }: { state: AsyncState<AccountSummary[]
               <tbody>
                 {accounts.map((account) => (
                   <tr key={account.accountId}>
-                    <td>{account.accountName}</td>
-                    <td>{label(account.provider)}</td>
-                    <td className="right">{money(account.income)}</td>
-                    <td className="right">{money(account.expenditure)}</td>
-                    <td className={account.netSavings < 0 ? 'right tone-down' : 'right tone-up'}>
+                    <td data-label="Account" className="card-title">{account.accountName}</td>
+                    <td data-label="Bank">{label(account.provider)}</td>
+                    <td data-label="In" className="right">{money(account.income)}</td>
+                    <td data-label="Out" className="right">{money(account.expenditure)}</td>
+                    <td
+                      data-label="Net"
+                      className={account.netSavings < 0 ? 'right tone-down' : 'right tone-up'}
+                    >
                       {money(account.netSavings)}
                     </td>
-                    <td className="right">{account.transactionCount}</td>
+                    <td data-label="Transactions" className="right">{account.transactionCount}</td>
                   </tr>
                 ))}
               </tbody>

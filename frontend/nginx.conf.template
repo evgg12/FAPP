@@ -1,0 +1,51 @@
+# ${FAPP_BACKEND_URL} and ${FAPP_DNS_RESOLVER} are substituted at container start.
+#
+# The upstream is reached through a variable rather than a literal host name, for two
+# reasons. nginx refuses to start at all if a literal upstream host does not resolve, so
+# a backend that is briefly absent would take the whole frontend down with it. And a
+# literal host is resolved once, at startup, and cached forever — after the backend
+# container is replaced on a new address, proxying would fail silently. A variable makes
+# nginx resolve per request through the configured resolver instead.
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Must not be lower than spring.servlet.multipart.max-file-size, or a statement
+    # would be rejected by the proxy before the backend could explain why.
+    client_max_body_size 6m;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # Vite fingerprints these filenames, so they can be cached indefinitely.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    resolver ${FAPP_DNS_RESOLVER} valid=10s ipv6=off;
+
+    location /api/ {
+        set $upstream "${FAPP_BACKEND_URL}";
+        # $request_uri is required: with a variable upstream nginx does not append it.
+        proxy_pass $upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Statement imports are small but parsing is synchronous.
+        proxy_read_timeout 120s;
+    }
+
+    # index.html is never cached, so a deploy is picked up on the next reload.
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}

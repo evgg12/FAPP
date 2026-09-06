@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { ApiError, api } from '../api/client'
-import type { AccountSummary, AccountType, DateRange } from '../api/types'
-import { Async, ErrorNotice } from './Async'
-import type { AsyncState } from '../hooks/useAsync'
+import type { AccountType } from '../api/types'
+import { ErrorNotice } from './Async'
 import { label } from '../format'
 
 const ACCOUNT_TYPES: AccountType[] = ['CURRENT', 'SAVINGS', 'CREDIT_CARD', 'OTHER']
@@ -13,20 +12,16 @@ const PROVIDERS = [
   { slug: 'bank_of_scotland', name: 'Bank of Scotland' },
 ]
 
-export function AccountPicker({
+/**
+ * Adds an account. The bank chosen here decides which adapter reads its statements
+ * later, which is why the import form has no format selector.
+ */
+export function AccountForm({
   userId,
-  range,
-  accounts,
-  selectedId,
-  onSelect,
   onCreated,
 }: {
   userId: string
-  range: DateRange
-  accounts: AsyncState<AccountSummary[]>
-  selectedId: string | null
-  onSelect: (accountId: string | null) => void
-  onCreated: () => void
+  onCreated: (accountId: string) => void
 }) {
   const [provider, setProvider] = useState(PROVIDERS[0].slug)
   const [displayName, setDisplayName] = useState('')
@@ -47,8 +42,7 @@ export function AccountPicker({
         currency: 'GBP',
       })
       setDisplayName('')
-      onCreated()
-      onSelect(account.id)
+      onCreated(account.id)
     } catch (caught) {
       setError(caught as ApiError)
     } finally {
@@ -58,37 +52,11 @@ export function AccountPicker({
 
   return (
     <section className="panel">
-      <h2>Accounts</h2>
-      <Async state={accounts} empty="No accounts yet. Add one below.">
-        {(list) => (
-          <ul className="choices">
-            <li>
-              <button
-                type="button"
-                className={selectedId === null ? 'chip chip-on' : 'chip'}
-                onClick={() => onSelect(null)}
-              >
-                All accounts
-              </button>
-            </li>
-            {list.map((account) => (
-              <li key={account.accountId}>
-                <button
-                  type="button"
-                  className={selectedId === account.accountId ? 'chip chip-on' : 'chip'}
-                  onClick={() => onSelect(account.accountId)}
-                >
-                  {account.accountName}
-                  <span className="muted"> · {label(account.provider)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Async>
-
+      <div className="panel-head">
+        <h2>Add an account</h2>
+      </div>
       {error && <ErrorNotice error={error} />}
-      <form onSubmit={create} className="row wrap">
+      <form onSubmit={create} className="form-grid">
         <label>
           Bank
           <select value={provider} onChange={(e) => setProvider(e.target.value)}>
@@ -121,13 +89,12 @@ export function AccountPicker({
             ))}
           </select>
         </label>
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="btn-wide" disabled={busy}>
           {busy ? 'Adding…' : 'Add account'}
         </button>
       </form>
       <p className="muted">
-        Accounts are listed for {range.from} to {range.to}. Currency is fixed at GBP,
-        which is what both supported banks export.
+        Currency is fixed at GBP, which is what both supported banks export.
       </p>
     </section>
   )

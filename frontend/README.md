@@ -1,8 +1,10 @@
 # FAPP frontend
 
-A plain React + TypeScript dashboard over the existing FAPP REST API. It is a working
-interface, not a design exercise: every figure it shows is calculated by the backend, and
-nothing financial is computed in the browser.
+A React + TypeScript dashboard over the FAPP REST API. Every figure it shows is
+calculated by the backend; nothing financial is computed in the browser.
+
+Two runtime dependencies — `react` and `react-dom`. No UI framework, no charting
+library, no state library. One stylesheet (`src/styles.css`) holds the design system.
 
 ## Running it
 
@@ -22,6 +24,11 @@ npm install
 npm run dev                   # http://localhost:5173
 ```
 
+```bash
+npm test                      # 41 tests
+npm run build                 # type-check, then a production bundle in dist/
+```
+
 ## Configuration
 
 The app calls the API with **relative** paths (`/api/...`) and the Vite dev server
@@ -29,44 +36,48 @@ forwards them, so requests are same-origin and the backend needs no CORS configu
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `FAPP_API_URL` | `http://localhost:8080` | Where the dev server proxies `/api` to |
+| `FAPP_API_URL` | `http://localhost:8080` | Where the dev server proxies `/api` |
 
 ```bash
 FAPP_API_URL=http://192.168.1.20:8080 npm run dev
 ```
 
-For a production build (`npm run build` → `dist/`), serve `dist/` behind something that
-routes `/api` to the backend. There is no build-time API URL to set.
+There is no build-time API URL. In production the bundle is served by nginx, which
+proxies `/api` to the backend — see `Dockerfile` and `nginx.conf.template` here, and the
+deployment section of the root README.
+
+The backend authenticates with HTTP Basic. Credentials are held for the browser tab only
+(`sessionStorage`) and sent on each request, so **serve this over HTTPS**. A token scheme
+would remove the need to hold a password at all and is the right next change.
 
 ## Using it
 
-1. **Pick a user.** There is no authentication yet and no endpoint that lists users, so
-   identity is an explicit id: create a user, or paste one you already have. The choice is
-   remembered in the browser.
-2. **Add an account**, choosing its bank. The bank is fixed at creation and is what
-   decides which adapter reads that account's statements — there is no format picker on
-   upload.
-3. **Import a statement.** Select a single account and upload its CSV. The result shows
-   how many rows were new and how many the account already held, so re-uploading an
-   overlapping statement visibly reconciles rather than doubles.
-4. **Set the period.** `from` is inclusive, `to` is exclusive. Both are always sent; the
-   API never guesses a window. The default is the last twelve months.
-5. **Read the dashboard.** Summary, category and monthly breakdowns, per-account totals,
-   largest expenses, and the selected account's transactions. Selecting *All accounts*
-   drops the account filter from the analytics requests.
+1. **Sign in, or create an account.** Registration takes an email, a display name and a
+   password of at least 12 characters. Signing in confirms the credentials and returns
+   the user id everything else is scoped by — there is no id to paste.
+2. **Add an account** under *Accounts*, choosing its bank. The bank is fixed at creation
+   and decides which adapter reads its statements, which is why the import form has no
+   format selector.
+3. **Import a statement** — a CSV exported from Monzo or Bank of Scotland — into the
+   selected account. The result shows how many rows were new and how many were already
+   held, because re-importing an overlapping statement is a normal thing to do.
+4. **Read the dashboard.** Summary cards, monthly income and spending, category and
+   account breakdowns, largest expenses and recent transactions, over the period and
+   account chosen in the toolbar.
+5. **Track goals** under *Goals*, and test a change under *Simulator*. A simulation is a
+   calculation: it is never written down.
 
-Use the sanitised fixtures in `src/test/resources/monzo/statement.csv` and
-`src/test/resources/bankofscotland/statement.csv` for a quick look. **Never put a real
-bank statement in this repository.**
+## Layout
 
-## Checks
-
-```bash
-npm run build    # type-checks with tsc, then builds
-npm test         # Vitest: API client, formatting, component rendering
-```
-
-## What is not here
-
-No authentication, no charts library, no AI assistant, no simulator, no savings goals.
-Breakdowns are drawn as CSS bars rather than pulling in a charting dependency.
+- `src/api/` — the typed client and the response types. One `request()` adds the
+  Authorization header and turns an error body into an `ApiError`.
+- `src/hooks/useAsync.ts` — the loading/failed/loaded state every panel shares. Each
+  panel loads independently, so one failing request shows an error in its own panel
+  instead of blanking the page.
+- `src/components/` — one file per panel. `Async.tsx` renders the three states so no
+  panel repeats them.
+- `src/format.ts` — display formatting and the named period scales. No arithmetic on a
+  financial figure.
+- `src/styles.css` — mobile-first. The base rules are the phone layout and the media
+  queries widen it. Data tables collapse into one card per row below 700px, so no
+  figure ends up behind a sideways scroll.

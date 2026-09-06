@@ -51,8 +51,10 @@ export function StatementUpload({
 
   return (
     <section className="panel">
-      <h2>Import a statement</h2>
-      <form onSubmit={upload} className="row wrap">
+      <div className="panel-head">
+        <h2>Import a statement</h2>
+      </div>
+      <form onSubmit={upload} className="form-grid">
         <input
           ref={input}
           type="file"
@@ -60,7 +62,7 @@ export function StatementUpload({
           aria-label="Statement CSV"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
-        <button type="submit" disabled={busy || !file}>
+        <button type="submit" className="btn-wide" disabled={busy || !file}>
           {busy ? 'Importing…' : 'Import'}
         </button>
       </form>

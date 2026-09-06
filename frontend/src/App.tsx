@@ -1,49 +1,78 @@
 import { useEffect, useState } from 'react'
-import { api } from './api/client'
+import { api, clearCredentials, currentEmail } from './api/client'
 import type { DateRange } from './api/types'
 import { useAsync } from './hooks/useAsync'
-import { defaultRange } from './format'
+import { scaleRange } from './format'
+import type { PeriodScale } from './format'
 import { AccountBreakdown } from './components/AccountBreakdown'
-import { AccountPicker } from './components/AccountPicker'
+import { AccountChips } from './components/AccountChips'
+import { AccountForm } from './components/AccountForm'
 import { CategoryBreakdown } from './components/CategoryBreakdown'
-import { DateRangePicker } from './components/DateRangePicker'
+import { GoalsPanel } from './components/GoalsPanel'
 import { LargestExpenses } from './components/LargestExpenses'
-import { MonthlyBreakdown } from './components/MonthlyBreakdown'
+import { PeriodPicker } from './components/PeriodPicker'
+import { RecategorisePanel } from './components/RecategorisePanel'
+import { SignInScreen } from './components/SignInScreen'
+import { SimulatorPanel } from './components/SimulatorPanel'
 import { StatementUpload } from './components/StatementUpload'
 import { SummaryPanel } from './components/SummaryPanel'
 import { TransactionList } from './components/TransactionList'
-import { UserPicker } from './components/UserPicker'
+import { TrendChart } from './components/TrendChart'
 
-const USER_KEY = 'fapp.userId'
 const ACCOUNT_KEY = 'fapp.accountId'
 
+type View = 'dashboard' | 'transactions' | 'goals' | 'simulator' | 'accounts'
+
+const VIEWS: { view: View; label: string }[] = [
+  { view: 'dashboard', label: 'Dashboard' },
+  { view: 'transactions', label: 'Transactions' },
+  { view: 'goals', label: 'Goals' },
+  { view: 'simulator', label: 'Simulator' },
+  { view: 'accounts', label: 'Accounts' },
+]
+
+/** Which views the account and period controls actually change. */
+const NEEDS_ACCOUNT: View[] = ['dashboard', 'transactions', 'simulator']
+const NEEDS_PERIOD: View[] = ['dashboard', 'simulator']
+
 /**
- * The whole dashboard: pick a user, pick an account, import a statement, look at the
- * numbers.
+ * The application shell: sign in, choose what you are looking at, choose the account and
+ * period it is calculated over.
  *
- * Analytics are always user-scoped and narrowed by the selected account, which is how
- * the API is shaped — one set of endpoints with an optional `accountId` rather than two
+ * Analytics are always user-scoped and narrowed by the selected account, which is how the
+ * API is shaped — one set of endpoints with an optional `accountId` rather than two
  * parallel trees. Selecting "all accounts" simply omits it.
  *
- * Every panel loads independently, so one failing request shows an error in its own
+ * Every panel loads independently, so one failing request shows an error inside its own
  * panel instead of blanking the page.
  */
 export default function App() {
-  const [userId, setUserId] = useState<string | null>(() => localStorage.getItem(USER_KEY))
+  const [userId, setUserId] = useState<string | null>(null)
+  const [email, setEmail] = useState<string | null>(() => currentEmail())
+  const [checkingSession, setCheckingSession] = useState(() => currentEmail() !== null)
+  const [view, setView] = useState<View>('dashboard')
   const [accountId, setAccountId] = useState<string | null>(() => localStorage.getItem(ACCOUNT_KEY))
-  const [range, setRange] = useState<DateRange>(() => defaultRange())
-  // Bumped after an import so every panel reloads against the new transactions.
+  const [scale, setScale] = useState<PeriodScale>('twelveMonths')
+  const [range, setRange] = useState<DateRange>(() => scaleRange('twelveMonths'))
+  // Bumped after an import or a recategorisation so every panel reloads.
   const [dataVersion, setDataVersion] = useState(0)
 
+  // Credentials survive a reload within the tab, so the session is re-established
+  // rather than making the user sign in again.
   useEffect(() => {
-    if (userId) {
-      localStorage.setItem(USER_KEY, userId)
-    } else {
-      localStorage.removeItem(USER_KEY)
-      localStorage.removeItem(ACCOUNT_KEY)
-      setAccountId(null)
+    if (!email || userId) {
+      return
     }
-  }, [userId])
+    api
+      .me()
+      .then((user) => setUserId(user.id))
+      .catch(() => {
+        clearCredentials()
+        setEmail(null)
+        setUserId(null)
+      })
+      .finally(() => setCheckingSession(false))
+  }, [email, userId])
 
   useEffect(() => {
     if (accountId) {
@@ -54,6 +83,7 @@ export default function App() {
   }, [accountId])
 
   const rangeIsUsable = range.from < range.to
+  const ready = userId !== null && rangeIsUsable
   const analyticsKey = [userId, accountId, range.from, range.to, dataVersion, rangeIsUsable]
 
   const accounts = useAsync(
@@ -61,21 +91,19 @@ export default function App() {
     [userId, range.from, range.to, dataVersion, rangeIsUsable],
   )
   const summary = useAsync(
-    userId && rangeIsUsable ? () => api.summary(userId, range, accountId ?? undefined) : null,
+    ready ? () => api.summary(userId!, range, accountId ?? undefined) : null,
     analyticsKey,
   )
   const categories = useAsync(
-    userId && rangeIsUsable ? () => api.categories(userId, range, accountId ?? undefined) : null,
+    ready ? () => api.categories(userId!, range, accountId ?? undefined) : null,
     analyticsKey,
   )
   const monthly = useAsync(
-    userId && rangeIsUsable ? () => api.monthly(userId, range, accountId ?? undefined) : null,
+    ready ? () => api.monthly(userId!, range, accountId ?? undefined) : null,
     analyticsKey,
   )
   const largest = useAsync(
-    userId && rangeIsUsable
-      ? () => api.largestExpenses(userId, range, accountId ?? undefined, 10)
-      : null,
+    ready ? () => api.largestExpenses(userId!, range, accountId ?? undefined, 10) : null,
     analyticsKey,
   )
   const transactions = useAsync(
@@ -83,61 +111,188 @@ export default function App() {
     [accountId, dataVersion],
   )
 
+  if (!userId) {
+    if (checkingSession) {
+      return (
+        <main className="signin">
+          <p className="muted" role="status">
+            Loading…
+          </p>
+        </main>
+      )
+    }
+    return (
+      <SignInScreen
+        onSignedIn={(signedInUserId) => {
+          setEmail(currentEmail())
+          setUserId(signedInUserId)
+        }}
+      />
+    )
+  }
+
+  const noAccountsYet = accounts.data !== undefined && accounts.data.length === 0
+  const showAccountControl = NEEDS_ACCOUNT.includes(view) && !noAccountsYet
+  const showPeriodControl = NEEDS_PERIOD.includes(view)
+
   return (
-    <div className="page">
-      <header>
-        <h1>FAPP</h1>
-        <p className="muted">Financial Aggregation &amp; Planning Platform</p>
+    <div className="shell">
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="brandbar">
+            <div className="brand">
+              <h1>FAPP</h1>
+              <span className="brand-sub">Financial Aggregation &amp; Planning</span>
+            </div>
+            <div className="whoami">
+              <span className="whoami-email">{email}</span>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => {
+                  clearCredentials()
+                  setEmail(null)
+                  setUserId(null)
+                  setAccountId(null)
+                  setView('dashboard')
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+          <nav aria-label="Sections">
+            <ul className="tabs">
+              {VIEWS.map((item) => (
+                <li key={item.view}>
+                  <button
+                    type="button"
+                    className="tab"
+                    aria-current={view === item.view ? 'page' : undefined}
+                    onClick={() => setView(item.view)}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
       </header>
 
-      <UserPicker userId={userId} onChange={setUserId} />
-
-      {!userId ? (
-        <p className="muted">Choose a user to see a dashboard.</p>
-      ) : (
-        <>
-          <AccountPicker
-            userId={userId}
-            range={range}
-            accounts={accounts}
-            selectedId={accountId}
-            onSelect={setAccountId}
-            onCreated={() => setDataVersion((version) => version + 1)}
-          />
-
-          {accountId ? (
-            <StatementUpload
-              accountId={accountId}
-              onImported={() => setDataVersion((version) => version + 1)}
-            />
-          ) : (
-            <section className="panel">
-              <h2>Import a statement</h2>
-              <p className="muted">Select a single account to import a statement into it.</p>
-            </section>
-          )}
-
-          <DateRangePicker range={range} onChange={setRange} />
-          {!rangeIsUsable && (
-            <div className="notice notice-error" role="alert">
-              <strong>INVALID_DATE_RANGE</strong>
-              <span>The start date must be before the end date.</span>
-            </div>
-          )}
-
-          <SummaryPanel state={summary} />
-          <div className="grid">
-            <CategoryBreakdown state={categories} />
-            <MonthlyBreakdown state={monthly} />
+      {(showAccountControl || showPeriodControl) && (
+        <div className="toolbar">
+          <div className="toolbar-inner stack">
+            {showAccountControl && (
+              <AccountChips
+                accounts={accounts}
+                selectedId={accountId}
+                onSelect={setAccountId}
+              />
+            )}
+            {showPeriodControl && (
+              <PeriodPicker
+                scale={scale}
+                range={range}
+                onChange={(nextScale, nextRange) => {
+                  setScale(nextScale)
+                  setRange(nextRange)
+                }}
+              />
+            )}
           </div>
-          <AccountBreakdown state={accounts} />
-          <LargestExpenses state={largest} />
-          <TransactionList state={transactions} accountSelected={accountId !== null} />
-        </>
+        </div>
       )}
 
-      <footer className="muted">
-        Every figure shown is calculated by the backend. FAPP informs; it does not advise.
+      <main className="main">
+        {!rangeIsUsable && (
+          <div className="notice notice-error" role="alert">
+            <strong>INVALID_DATE_RANGE</strong>
+            <span>The start date must be before the end date.</span>
+          </div>
+        )}
+
+        {noAccountsYet && view !== 'accounts' && (
+          <div className="notice notice-info">
+            <strong>Get started</strong>
+            <span>
+              Add an account under Accounts, then import a CSV statement to see your
+              figures here.
+            </span>
+          </div>
+        )}
+
+        {view === 'dashboard' && (
+          <>
+            <SummaryPanel state={summary} />
+            <TrendChart state={monthly} />
+            <div className="grid grid-2">
+              <CategoryBreakdown state={categories} />
+              <AccountBreakdown state={accounts} />
+            </div>
+            <LargestExpenses state={largest} />
+            <TransactionList
+              state={transactions}
+              accountSelected={accountId !== null}
+              limit={8}
+            />
+          </>
+        )}
+
+        {view === 'transactions' && (
+          <TransactionList state={transactions} accountSelected={accountId !== null} />
+        )}
+
+        {view === 'goals' && <GoalsPanel userId={userId} />}
+
+        {view === 'simulator' && (
+          <SimulatorPanel userId={userId} range={range} accountId={accountId} />
+        )}
+
+        {view === 'accounts' && (
+          <>
+            <AccountForm
+              userId={userId}
+              onCreated={(createdId) => {
+                setAccountId(createdId)
+                setDataVersion((version) => version + 1)
+              }}
+            />
+            {accountId ? (
+              <StatementUpload
+                accountId={accountId}
+                onImported={() => setDataVersion((version) => version + 1)}
+              />
+            ) : (
+              <section className="panel">
+                <div className="panel-head">
+                  <h2>Import a statement</h2>
+                </div>
+                <p className="empty">
+                  Select a single account below to import a statement into it.
+                </p>
+                <AccountChips
+                  accounts={accounts}
+                  selectedId={accountId}
+                  onSelect={setAccountId}
+                />
+              </section>
+            )}
+            <RecategorisePanel
+              userId={userId}
+              onDone={() => setDataVersion((version) => version + 1)}
+            />
+          </>
+        )}
+      </main>
+
+      <footer className="foot">
+        <div className="foot-inner">
+          <p className="muted">
+            Every figure shown is calculated by the backend. FAPP informs; it does not
+            advise.
+          </p>
+        </div>
       </footer>
     </div>
   )

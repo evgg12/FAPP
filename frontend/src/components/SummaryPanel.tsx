@@ -11,14 +11,16 @@ import { money } from '../format'
 export function SummaryPanel({ state }: { state: AsyncState<FinancialSummary> }) {
   return (
     <section className="panel">
-      <h2>Summary</h2>
-      <Async state={state} empty="No transactions in this period.">
+      <div className="panel-head">
+        <h2>Summary</h2>
+      </div>
+      <Async state={state} empty="No transactions in this period." lines={2}>
         {(summary) => (
           <div className="figures">
-            <Figure label="Money in" value={money(summary.income)} />
-            <Figure label="Money out" value={money(summary.expenditure)} />
+            <Figure label="Income" value={money(summary.income)} />
+            <Figure label="Expenditure" value={money(summary.expenditure)} />
             <Figure
-              label="Net"
+              label="Net savings"
               value={money(summary.netSavings)}
               tone={summary.netSavings < 0 ? 'down' : 'up'}
             />

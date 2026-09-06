@@ -1,6 +1,10 @@
 import type {
   Account,
   AccountSummary,
+  RecategorisationResult,
+  SavingsGoal,
+  Scenario,
+  SimulationResult,
   AccountType,
   ApiErrorBody,
   CategorySummary,
@@ -29,10 +33,65 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/**
+ * The credentials sent with every request.
+ *
+ * <p>The backend uses HTTP Basic, so a password has to travel on each call. It is held in
+ * `sessionStorage` rather than `localStorage` deliberately: it is gone when the tab
+ * closes, and the browser never keeps it beyond the session. Holding a password at all is
+ * the cost of Basic auth — a token or session scheme removes the need, and is the right
+ * change for Phase 3.
+ */
+const CREDENTIALS_KEY = 'fapp.credentials'
+
+interface Credentials {
+  email: string
+  password: string
+}
+
+export function setCredentials(credentials: Credentials): void {
+  sessionStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials))
+}
+
+export function clearCredentials(): void {
+  sessionStorage.removeItem(CREDENTIALS_KEY)
+}
+
+export function currentEmail(): string | null {
+  return readCredentials()?.email ?? null
+}
+
+function readCredentials(): Credentials | null {
+  const stored = sessionStorage.getItem(CREDENTIALS_KEY)
+  if (!stored) {
+    return null
+  }
+  try {
+    return JSON.parse(stored) as Credentials
+  } catch {
+    return null
+  }
+}
+
+function authorization(): Record<string, string> {
+  const credentials = readCredentials()
+  if (!credentials) {
+    return {}
+  }
+  // btoa handles the ASCII case; encodeURIComponent/escape keeps non-ASCII correct.
+  const encoded = btoa(
+    unescape(encodeURIComponent(`${credentials.email}:${credentials.password}`)),
+  )
+  return { Authorization: `Basic ${encoded}` }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response
   try {
-    response = await fetch(path, init)
+    response = await fetch(path, {
+      ...init,
+      headers: { ...authorization(), ...(init.headers ?? {}) },
+    })
   } catch {
     // The browser could not reach the API at all, which usually means the backend is
     // not running. Worth saying so plainly rather than reporting a network trace.
@@ -81,8 +140,19 @@ export function analyticsQuery(range: DateRange, accountId?: string, limit?: num
 }
 
 export const api = {
-  createUser(email: string, displayName: string): Promise<User> {
-    return request<User>('/api/users', json({ email, displayName }))
+  /** Registration. The only call that needs no credential, because it creates one. */
+  createUser(email: string, displayName: string, password: string): Promise<User> {
+    return request<User>('/api/users', json({ email, displayName, password }))
+  },
+
+  /** Who the stored credentials belong to. A 401 from here means they are wrong. */
+  me(): Promise<User> {
+    return request<User>('/api/auth/me')
+  },
+
+  /** The user's accounts. Its own endpoint now, rather than the analytics breakdown. */
+  accountsOf(userId: string): Promise<Account[]> {
+    return request<Account[]>(`/api/users/${userId}/accounts`)
   },
 
   createAccount(input: {
@@ -135,6 +205,51 @@ export const api = {
   accounts(userId: string, range: DateRange): Promise<AccountSummary[]> {
     return request<AccountSummary[]>(
       `/api/users/${userId}/analytics/accounts?${analyticsQuery(range)}`,
+    )
+  },
+
+  goals(userId: string): Promise<SavingsGoal[]> {
+    return request<SavingsGoal[]>(`/api/users/${userId}/goals`)
+  },
+
+  createGoal(
+    userId: string,
+    goal: { name: string; targetAmount: number; currency: string; targetDate: string },
+  ): Promise<SavingsGoal> {
+    return request<SavingsGoal>(`/api/users/${userId}/goals`, json(goal))
+  },
+
+  updateGoal(
+    userId: string,
+    goalId: string,
+    goal: {
+      name: string
+      targetAmount: number
+      currentAmount: number
+      targetDate: string
+    },
+  ): Promise<SavingsGoal> {
+    return request<SavingsGoal>(`/api/users/${userId}/goals/${goalId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goal),
+    })
+  },
+
+  deleteGoal(userId: string, goalId: string): Promise<void> {
+    return request<void>(`/api/users/${userId}/goals/${goalId}`, { method: 'DELETE' })
+  },
+
+  /** Runs a what-if scenario. Creates nothing: the answer is a calculation. */
+  simulate(userId: string, scenario: Scenario): Promise<SimulationResult> {
+    return request<SimulationResult>(`/api/users/${userId}/simulations`, json(scenario))
+  },
+
+  /** Reapplies today's merchant rules to transactions imported before them. */
+  recategorise(userId: string): Promise<RecategorisationResult> {
+    return request<RecategorisationResult>(
+      `/api/users/${userId}/transactions/recategorise`,
+      { method: 'POST' },
     )
   },
 
