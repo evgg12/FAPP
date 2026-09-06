@@ -19,7 +19,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * kept pointing at the dead port; Ryuk reaps it when the JVM exits instead.
  */
 @SpringBootTest
-abstract class AbstractPostgresTest {
+public abstract class AbstractPostgresTest {
 
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
