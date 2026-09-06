@@ -1,6 +1,8 @@
 package com.fapp.statement;
 
 import com.fapp.money.Money;
+import com.fapp.transaction.Category;
+import com.fapp.transaction.CategorySource;
 import com.fapp.transaction.TransactionType;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -94,7 +96,8 @@ class StatementAdapterTest {
             }
             return ParsedStatement.of(List.of(new RawTransaction(
                     bookingDate, null, Money.of("-25.00", "GBP"), null,
-                    "STUB ROW", null, null, TransactionType.CARD_PAYMENT)));
+                    "STUB ROW", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT)));
         }
     }
 }

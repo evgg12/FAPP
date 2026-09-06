@@ -1,6 +1,8 @@
 package com.fapp.statement;
 
 import com.fapp.money.Money;
+import com.fapp.transaction.Category;
+import com.fapp.transaction.CategorySource;
 import com.fapp.transaction.TransactionType;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -125,6 +127,7 @@ class ParsedStatementTest {
     private static RawTransaction row(LocalDate bookingDate) {
         return new RawTransaction(
                 bookingDate, null, Money.of("-12.34", "GBP"), null,
-                "ROW " + bookingDate, null, null, TransactionType.CARD_PAYMENT);
+                "ROW " + bookingDate, null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT);
     }
 }

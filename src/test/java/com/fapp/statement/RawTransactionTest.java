@@ -1,6 +1,8 @@
 package com.fapp.statement;
 
 import com.fapp.money.Money;
+import com.fapp.transaction.Category;
+import com.fapp.transaction.CategorySource;
 import com.fapp.transaction.TransactionType;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,8 @@ class RawTransactionTest {
     void carriesADomesticRowWithEverythingTheProviderOmittedLeftNull() {
         RawTransaction row = new RawTransaction(
                 BOOKED, null, Money.of("-42.00", "GBP"), null,
-                "TESCO STORES 3421", null, null, TransactionType.CARD_PAYMENT);
+                "TESCO STORES 3421", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT);
 
         assertThat(row.bookingDate()).isEqualTo(BOOKED);
         assertThat(row.occurredOn()).isNull();
@@ -38,7 +41,8 @@ class RawTransactionTest {
     void carriesAForeignCurrencyRowWithBothLegs() {
         RawTransaction row = new RawTransaction(
                 BOOKED, LocalDate.of(2026, 3, 12), Money.of("-8.50", "GBP"), Money.of("-10.00", "EUR"),
-                "SNCF PARIS", "SNCF", "tx_00009fZ", TransactionType.CARD_PAYMENT);
+                "SNCF PARIS", "SNCF", "tx_00009fZ", TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT);
 
         assertThat(row.amount()).isEqualTo(Money.of("-8.50", "GBP"));
         assertThat(row.originalAmount()).isEqualTo(Money.of("-10.00", "EUR"));
@@ -65,7 +69,8 @@ class RawTransactionTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-8.50", "GBP"), Money.of("-8.50", "GBP"),
-                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT))
+                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("different currency");
     }
 
@@ -74,7 +79,8 @@ class RawTransactionTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-8.50", "GBP"), Money.of("10.00", "EUR"),
-                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT))
+                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("same way");
     }
 
@@ -82,7 +88,8 @@ class RawTransactionTest {
     void trimsTheSurroundingWhitespaceProviderExportsAreFullOf() {
         RawTransaction row = new RawTransaction(
                 BOOKED, null, Money.of("-42.00", "GBP"), null,
-                "  TESCO STORES 3421  ", "  Tesco  ", "  tx_1  ", TransactionType.CARD_PAYMENT);
+                "  TESCO STORES 3421  ", "  Tesco  ", "  tx_1  ", TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT);
 
         assertThat(row.description()).isEqualTo("TESCO STORES 3421");
         assertThat(row.merchant()).isEqualTo("Tesco");
@@ -94,7 +101,8 @@ class RawTransactionTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-1.00", "GBP"), null,
-                        "   ", null, null, TransactionType.CARD_PAYMENT))
+                        "   ", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("description must not be blank");
     }
 
@@ -103,13 +111,15 @@ class RawTransactionTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-1.00", "GBP"), null,
-                        "SOMEWHERE", "", null, TransactionType.CARD_PAYMENT))
+                        "SOMEWHERE", "", null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("merchant must be null rather than blank");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-1.00", "GBP"), null,
-                        "SOMEWHERE", null, "  ", TransactionType.CARD_PAYMENT))
+                        "SOMEWHERE", null, "  ", TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("externalId must be null rather than blank");
     }
 
@@ -118,26 +128,44 @@ class RawTransactionTest {
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> new RawTransaction(
                         null, null, Money.of("-1.00", "GBP"), null,
-                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT))
+                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("bookingDate");
 
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, null, null,
-                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT))
+                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("amount");
 
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-1.00", "GBP"), null,
-                        "SOMEWHERE", null, null, null))
+                        "SOMEWHERE", null, null, null,
+                        Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("transactionType");
 
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> new RawTransaction(
                         BOOKED, null, Money.of("-1.00", "GBP"), null,
-                        null, null, null, TransactionType.CARD_PAYMENT))
+                        null, null, null, TransactionType.CARD_PAYMENT,
+                        Category.UNCATEGORISED, CategorySource.DEFAULT))
                 .withMessageContaining("description");
+
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> new RawTransaction(
+                        BOOKED, null, Money.of("-1.00", "GBP"), null,
+                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT,
+                        null, CategorySource.DEFAULT))
+                .withMessageContaining("category");
+
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> new RawTransaction(
+                        BOOKED, null, Money.of("-1.00", "GBP"), null,
+                        "SOMEWHERE", null, null, TransactionType.CARD_PAYMENT,
+                        Category.UNCATEGORISED, null))
+                .withMessageContaining("categorySource");
     }
 
     @Test
@@ -149,8 +177,20 @@ class RawTransactionTest {
         assertThat(one).isNotEqualTo(row(Money.of("-42.01", "GBP")));
     }
 
+    @Test
+    void carriesTheCategoryAnAdapterMappedOutOfTheProvidersOwnVocabulary() {
+        RawTransaction row = new RawTransaction(
+                BOOKED, null, Money.of("-24.15", "GBP"), null,
+                "GREENFIELD GROCERS", "Greenfield Grocers", "tx_1",
+                TransactionType.CARD_PAYMENT, Category.GROCERIES, CategorySource.ADAPTER);
+
+        assertThat(row.category()).isEqualTo(Category.GROCERIES);
+        assertThat(row.categorySource()).isEqualTo(CategorySource.ADAPTER);
+    }
+
     private static RawTransaction row(Money amount) {
         return new RawTransaction(
-                BOOKED, null, amount, null, "TESCO STORES 3421", null, null, TransactionType.CARD_PAYMENT);
+                BOOKED, null, amount, null, "TESCO STORES 3421", null, null, TransactionType.CARD_PAYMENT,
+                Category.UNCATEGORISED, CategorySource.DEFAULT);
     }
 }

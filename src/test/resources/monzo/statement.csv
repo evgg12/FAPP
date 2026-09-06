@@ -1,0 +1,21 @@
+Transaction ID,Date,Time,Type,Name,Emoji,Category,Amount,Currency,Local amount,Local currency,Notes and #tags,Address,Receipt,Description,Category split,Money Out,Money In
+tx_sample000000000000001,01/08/2026,09:00:12,Card payment,GOOGLE *TEMPORARY HOLD,,General,0.00,GBP,0.00,GBP,,,,GOOGLE *TEMPORARY HOLD,,0.00,
+tx_sample000000000000002,03/08/2026,08:14:22,Card payment,Greenfield Grocers,🥑,Groceries,-24.15,GBP,-24.15,GBP,,"12 High Street, Sampleton",,GREENFIELD GROCERS 4821,,24.15,
+tx_sample000000000000003,05/08/2026,12:31:09,Card payment,Blue Door Cafe,☕,Eating out,-8.40,GBP,-8.40,GBP,lunch,"3 Mill Lane, Sampleton",,BLUE DOOR CAFE,,8.40,
+tx_sample000000000000004,07/08/2026,18:02:41,Card payment,Greenfield Grocers,🥑,Groceries,-24.15,GBP,-24.15,GBP,,"12 High Street, Sampleton",,GREENFIELD GROCERS 4821,,24.15,
+tx_sample000000000000005,11/08/2026,19:45:03,Card payment,Bahnhof Buchhandlung,📚,Shopping,-18.62,GBP,-21.90,EUR,,"Hauptbahnhof 1, Sampleburg",,BAHNHOF BUCHHANDLUNG,,18.62,
+tx_sample000000000000006,12/08/2026,07:58:00,Card payment,City Rail,🚆,Transport,-3.20,GBP,-3.20,GBP,,,,CITY RAIL TICKET,,3.20,
+tx_sample000000000000007,14/08/2026,22:10:55,Card payment,UBER * PENDING,🚕,Transport,-14.75,GBP,-14.75,GBP,,,,UBER * PENDING,,14.75,
+tx_sample000000000000008,17/08/2026,03:22:00,Bacs (Direct Credit),Sample Employer Ltd,,Income,1842.55,GBP,1842.55,GBP,,,,SAMPLE EMPLOYER LTD SALARY,,,1842.55
+tx_sample000000000000009,18/08/2026,16:04:30,Faster payment,A Counterparty,,General,-45.00,GBP,-45.00,GBP,"dinner split, plus the taxi",,,DINNER SPLIT,,45.00,
+tx_sample000000000000010,19/08/2026,00:05:00,Pot transfer,Holiday Pot,🏖,Transfers,-200.00,GBP,-200.00,GBP,,,,Holiday Pot,,200.00,
+tx_sample000000000000011,20/08/2026,11:11:11,Bank transfer,Sample Savings,,Transfers,-300.00,GBP,-300.00,GBP,,,,SAVINGS TRANSFER,,300.00,
+tx_sample000000000000012,21/08/2026,10:00:00,monzo_paid,Monzo,,General,2.31,GBP,2.31,GBP,interest,,,Monzo interest paid,,,2.31
+tx_sample000000000000013,22/08/2026,06:30:00,Card payment,StreamCo,,Personal care,-12.99,GBP,-12.99,GBP,,,,STREAMCO SUBSCRIPTION,,12.99,
+tx_sample000000000000014,24/08/2026,09:00:00,Card payment,City Power,,Bills,-88.40,GBP,-88.40,GBP,,,,CITY POWER,,88.40,
+tx_sample000000000000015,24/08/2026,17:45:00,Card payment,Blue Door Cafe,☕,Eating out,-8.40,GBP,-8.40,GBP,,,,BLUE DOOR CAFE,,8.40,
+tx_sample000000000000016,25/08/2026,20:15:00,Card payment,Sampleplex Cinema,🎬,Entertainment,-13.50,GBP,-13.50,GBP,,,,,,13.50,
+tx_sample000000000000017,27/08/2026,14:00:00,Faster payment,,,General,-20.00,GBP,-20.00,GBP,,,,,,20.00,
+tx_sample000000000000018,28/08/2026,13:20:00,Card payment,Sample Hardware,,Shopping,-64.00,GBP,-64.00,GBP,"said ""next day"" delivery
+and then did not","5 Dock Road, Sampleton",,SAMPLE HARDWARE 22,,64.00,
+tx_sample000000000000019,29/08/2026,00:05:00,Pot transfer,Holiday Pot,🏖,General,75.00,GBP,75.00,GBP,,,,Holiday Pot,,,75.00

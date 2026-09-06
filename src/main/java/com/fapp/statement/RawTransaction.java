@@ -1,6 +1,8 @@
 package com.fapp.statement;
 
 import com.fapp.money.Money;
+import com.fapp.transaction.Category;
+import com.fapp.transaction.CategorySource;
 import com.fapp.transaction.TransactionType;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -11,8 +13,8 @@ import java.util.Objects;
  *
  * <p>This is the seam that keeps the platform provider-independent. Everything
  * bank-specific — column order, date and decimal formats, character encoding, the
- * bank's own type codes, which sign a debit is written with — is resolved by the
- * adapter that produced this. Every step after it works only with the values here, so
+ * bank's own type codes and category vocabulary, which sign a debit is written with —
+ * is resolved by the adapter that produced this. Every step after it works only with the values here, so
  * adding a bank means adding an adapter and nothing else.
  *
  * <p>Deliberately in-memory only: no JPA annotations, never persisted, and no
@@ -41,6 +43,13 @@ import java.util.Objects;
  *                        Authoritative for deduplication when present. Nullable.
  * @param transactionType the coarse nature of the movement, already mapped out of the
  *                        bank's own code list by the adapter. Required.
+ * @param category        the FAPP category, mapped out of the provider's own category
+ *                        vocabulary by the adapter. {@link Category#UNCATEGORISED}
+ *                        where the statement says nothing usable. Required.
+ * @param categorySource  how {@code category} was decided. An adapter that read it
+ *                        from the statement reports {@link CategorySource#ADAPTER};
+ *                        one whose format carries no categories reports
+ *                        {@link CategorySource#DEFAULT}. Required.
  */
 public record RawTransaction(
         LocalDate bookingDate,
@@ -50,12 +59,16 @@ public record RawTransaction(
         String description,
         String merchant,
         String externalId,
-        TransactionType transactionType) {
+        TransactionType transactionType,
+        Category category,
+        CategorySource categorySource) {
 
     public RawTransaction {
         Objects.requireNonNull(bookingDate, "bookingDate must not be null");
         Objects.requireNonNull(amount, "amount must not be null");
         Objects.requireNonNull(transactionType, "transactionType must not be null");
+        Objects.requireNonNull(category, "category must not be null");
+        Objects.requireNonNull(categorySource, "categorySource must not be null");
 
         if (amount.isZero()) {
             throw new IllegalArgumentException("a statement row of zero is malformed input, not a movement");
