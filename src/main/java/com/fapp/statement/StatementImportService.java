@@ -1,7 +1,10 @@
 package com.fapp.statement;
 
 import com.fapp.account.Account;
+import com.fapp.transaction.Category;
+import com.fapp.transaction.CategorySource;
 import com.fapp.transaction.Transaction;
+import com.fapp.transaction.TransactionCategoriser;
 import com.fapp.transaction.TransferDetectionService;
 import com.fapp.transaction.TransactionFingerprint;
 import com.fapp.transaction.TransactionRepository;
@@ -54,17 +57,20 @@ public class StatementImportService {
     private final StatementImportRepository statementImports;
     private final TransactionRepository transactions;
     private final TransferDetectionService transferDetection;
+    private final TransactionCategoriser categoriser;
     private final EntityManager entityManager;
 
     public StatementImportService(List<StatementAdapter> adapters,
                                   StatementImportRepository statementImports,
                                   TransactionRepository transactions,
                                   TransferDetectionService transferDetection,
+                                  TransactionCategoriser categoriser,
                                   EntityManager entityManager) {
         this.adaptersByProvider = index(adapters);
         this.statementImports = statementImports;
         this.transactions = transactions;
         this.transferDetection = transferDetection;
+        this.categoriser = categoriser;
         this.entityManager = entityManager;
     }
 
@@ -255,8 +261,19 @@ public class StatementImportService {
         }
     }
 
-    private static Transaction transactionOf(Account account, StatementImport statementImport, NewRow row) {
+    /**
+     * Turns a parsed row into the transaction that gets stored, categorising it on the
+     * way through.
+     *
+     * <p>Categorisation happens here, after deduplication has decided the row is new and
+     * before it is persisted, so only rows actually being stored are categorised and a
+     * duplicate is never recategorised behind the user's back. It cannot affect
+     * deduplication either way: a fingerprint is built from the date, amount, currency
+     * and description, and never from the category.
+     */
+    private Transaction transactionOf(Account account, StatementImport statementImport, NewRow row) {
         RawTransaction raw = row.raw();
+        Categorisation categorisation = categorise(raw);
         return Transaction.builder()
                 .account(account)
                 .statementImport(statementImport)
@@ -266,13 +283,38 @@ public class StatementImportService {
                 .originalAmount(raw.originalAmount())
                 .description(raw.description())
                 .merchant(raw.merchant())
-                .category(raw.category(), raw.categorySource())
+                .category(categorisation.category(), categorisation.source())
                 .transactionType(raw.transactionType())
                 .externalId(raw.externalId())
                 .fingerprint(row.fingerprint())
                 .fingerprintVersion(Transaction.CURRENT_FINGERPRINT_VERSION)
                 .occurrence(row.occurrence())
                 .build();
+    }
+
+    /**
+     * What a row's category should be, and where that decision came from.
+     *
+     * <p>A category the adapter read from the statement wins: the bank filing a
+     * transaction under groceries is better evidence than a merchant name we happen to
+     * recognise. Merchant rules only fill in
+     * {@link com.fapp.transaction.Category#UNCATEGORISED}, which is a bank saying
+     * nothing usable rather than a bank saying "no category" — so this fills gaps and
+     * never overrides.
+     *
+     * <p>Applies to every provider equally. A Monzo row whose own category mapped to
+     * nothing useful gets the same treatment as a Bank of Scotland row, which has no
+     * category column at all.
+     */
+    private Categorisation categorise(RawTransaction raw) {
+        if (raw.category() != Category.UNCATEGORISED) {
+            return new Categorisation(raw.category(), raw.categorySource());
+        }
+        return categoriser.categorise(raw.merchant(), raw.description())
+                .map(category -> new Categorisation(category, CategorySource.RULE))
+                // No rule recognised the merchant, so it stays uncategorised and visibly
+                // so, still attributed to whatever the adapter decided.
+                .orElseGet(() -> new Categorisation(raw.category(), raw.categorySource()));
     }
 
     /**
@@ -292,6 +334,9 @@ public class StatementImportService {
     }
 
     private record NewRow(RawTransaction raw, String fingerprint, int occurrence) {
+    }
+
+    private record Categorisation(Category category, CategorySource source) {
     }
 
     /** What the account already holds for one fingerprint. */
