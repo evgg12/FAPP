@@ -51,10 +51,8 @@ period comparison, all calculated in SQL and Java over half-open date ranges. Mi
 accounts of different currencies is refused with a clear error rather than answered
 wrongly.
 
-**Savings goals and the simulator.** Goals track a target and progress towards it. The
-simulator projects a hypothetical change — a one-off purchase, a monthly change in
-spending or income — against your real baseline and, optionally, against one goal's
-date. Simulations are calculated in memory and written nowhere.
+**Savings goals.** Goals track a target, a date and progress towards it, with the
+remaining amount and percentage calculated by the backend.
 
 **Authentication.** HTTP Basic over a stateless API, BCrypt-hashed passwords, and every
 `/api/users/**` request checked against the authenticated user, so one user's id in a
@@ -62,7 +60,7 @@ path cannot be used to read another's figures.
 
 **Frontend.** A React + TypeScript dashboard over that API: summary cards, an income and
 spending chart, category and account breakdowns, largest expenses, transactions, goals
-with progress, the simulator, statement import and recategorisation. Responsive from a
+with progress, account removal, statement import and recategorisation. Responsive from a
 small phone up, and every figure it displays is one the backend calculated.
 
 There is **no AI assistant**. An earlier phase had one; it was removed deliberately, and
@@ -103,7 +101,7 @@ Import pipeline           bank adapters -> normalisation -> validation ->
 PostgreSQL  (schema owned by Flyway, never by Hibernate)
         |
         v
-Analytics, goals, simulator, transfer detection — deterministic, in Java and SQL
+Analytics, savings goals, transfer detection — deterministic, in Java and SQL
 ```
 
 Two rules shape this design. Bank-specific logic lives **only** in adapters, so adding a
@@ -144,9 +142,9 @@ and the backend needs no CORS configuration. Point it elsewhere with
 ## Tests and build
 
 ```bash
-./mvnw test                   # 498 tests; requires Docker for Testcontainers
+./mvnw test                   # 471 tests; requires Docker for Testcontainers
 ./mvnw package                # target/fapp-0.0.1-SNAPSHOT.jar
-cd frontend && npm test       # 41 tests
+cd frontend && npm test       # 38 tests
 cd frontend && npm run build  # type-check, then dist/
 ```
 
@@ -229,6 +227,7 @@ authenticated user.
 | `GET` | `/users/{userId}` | The user |
 | `POST` | `/accounts` | Add an account |
 | `GET` | `/accounts/{accountId}` | One account |
+| `DELETE` | `/accounts/{accountId}` | Remove an account and its history |
 | `GET` | `/users/{userId}/accounts` | The user's accounts |
 | `POST` | `/accounts/{accountId}/statements` | Import a CSV statement |
 | `GET` | `/imports/{importId}` | An import's outcome |
@@ -242,7 +241,6 @@ authenticated user.
 | `GET` | `/users/{userId}/analytics/comparison` | One period against another |
 | `POST`/`GET` | `/users/{userId}/goals` | Create / list savings goals |
 | `GET`/`PUT`/`DELETE` | `/users/{userId}/goals/{goalId}` | One goal |
-| `POST` | `/users/{userId}/simulations` | Run a what-if scenario |
 
 Analytics take `from` (inclusive) and `to` (exclusive) and an optional `accountId`.
 Errors return a stable code and message: `USER_NOT_FOUND`, `INVALID_DATE_RANGE`,

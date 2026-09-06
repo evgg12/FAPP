@@ -25,7 +25,7 @@ npm run dev                   # http://localhost:5173
 ```
 
 ```bash
-npm test                      # 41 tests
+npm test                      # 38 tests
 npm run build                 # type-check, then a production bundle in dist/
 ```
 
@@ -63,9 +63,9 @@ would remove the need to hold a password at all and is the right next change.
    held, because re-importing an overlapping statement is a normal thing to do.
 4. **Read the dashboard.** Summary cards, monthly income and spending, category and
    account breakdowns, largest expenses and recent transactions, over the period and
-   account chosen in the toolbar.
-5. **Track goals** under *Goals*, and test a change under *Simulator*. A simulation is a
-   calculation: it is never written down.
+   account chosen in the toolbar — one calendar month, or the year so far.
+5. **Track goals** under *Goals*. An account and everything imported into it can be
+   removed under *Accounts*.
 
 ## Layout
 

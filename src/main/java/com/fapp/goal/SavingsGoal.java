@@ -27,7 +27,7 @@ import java.util.UUID;
  * accounts — it has no way to know which of someone's savings is earmarked for a car and
  * which is a buffer, and inventing an answer would make the one number they actually care
  * about unreliable. What FAPP does calculate is the projection: whether the trajectory
- * their history implies reaches this target by this date, which is the simulator's job.
+ * their history implies reaches this target by this date.
  *
  * <p>The target and the current amount share one currency by construction, so they cannot
  * drift apart. The currency is fixed for the goal's life, as an account's is: changing it

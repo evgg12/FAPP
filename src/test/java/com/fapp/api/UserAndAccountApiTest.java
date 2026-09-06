@@ -3,10 +3,13 @@ package com.fapp.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -112,6 +115,57 @@ class UserAndAccountApiTest extends ApiTestSupport {
                                 """.formatted(UUID.randomUUID())))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void removesAnAccountAndTheHistoryImportedIntoIt() throws Exception {
+        String userId = createUser("closing-down@example.com");
+        String accountId = createAccount(userId, "monzo", "Monzo Current");
+        mockMvc.perform(multipart("/api/accounts/" + accountId + "/statements")
+                        .file(new MockMultipartFile("file", "s.csv", "text/csv",
+                                fixture("/monzo/statement.csv"))))
+                .andExpect(status().isCreated());
+        assertThat(jdbc().queryForObject("SELECT count(*) FROM transactions", Integer.class))
+                .isEqualTo(18);
+
+        mockMvc.perform(delete("/api/accounts/" + accountId))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/accounts/" + accountId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));
+        // The cascade is the schema's, not the application's: nothing is left behind.
+        assertThat(jdbc().queryForObject("SELECT count(*) FROM transactions", Integer.class))
+                .isZero();
+        assertThat(jdbc().queryForObject("SELECT count(*) FROM statement_imports", Integer.class))
+                .isZero();
+        // The user survives their account.
+        mockMvc.perform(get("/api/users/" + userId)).andExpect(status().isOk());
+    }
+
+    @Test
+    void refusesToRemoveSomebodyElsesAccount() throws Exception {
+        String ownerId = createUser("keeps-their-account@example.com");
+        String accountId = createAccount(ownerId, "monzo", "Monzo Current");
+
+        createUser("wants-it-gone@example.com");
+        authenticateAs("wants-it-gone@example.com");
+        // Not-found rather than forbidden: 403 would confirm the id is real.
+        mockMvc.perform(delete("/api/accounts/" + accountId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));
+
+        authenticateAs("keeps-their-account@example.com");
+        mockMvc.perform(get("/api/accounts/" + accountId)).andExpect(status().isOk());
+    }
+
+    @Test
+    void answersNotFoundWhenRemovingAnAccountThatIsNotThere() throws Exception {
+        createUser("nothing-to-remove@example.com");
+
+        mockMvc.perform(delete("/api/accounts/" + UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));
     }
 
     @Test

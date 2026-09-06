@@ -15,13 +15,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The simulator, the recategorisation backfill and the user/account read endpoints, over
- * HTTP against a real database.
+ * The recategorisation backfill and the user/account read endpoints, over HTTP against a
+ * real database.
  *
  * <p>The baseline throughout is one imported month: the sanitised Monzo statement, whose
  * August figures are 1919.86 in and 845.56 out, netting 1074.30 over a single month.
  */
-class SimulatorAndMaintenanceApiTest extends ApiTestSupport {
+class MaintenanceApiTest extends ApiTestSupport {
 
     private static final String BOS_HEADER = "Transaction Date,Transaction Type,Sort Code,"
             + "Account Number,Transaction Description,Debit Amount,Credit Amount,Balance";
@@ -31,143 +31,13 @@ class SimulatorAndMaintenanceApiTest extends ApiTestSupport {
 
     @BeforeEach
     void anImportedMonth() throws Exception {
-        userId = createUser("simulator@example.com");
+        userId = createUser("maintenance@example.com");
         accountId = createAccount(userId, "monzo", "Monzo Current");
         mockMvc.perform(multipart("/api/accounts/" + accountId + "/statements")
                         .file(new MockMultipartFile("file", "s.csv", "text/csv",
                                 fixture("/monzo/statement.csv"))))
                 .andExpect(status().isCreated());
     }
-
-    // --- simulator ---
-
-    @Test
-    void reportsTheBaselineAndTheScenarioSeparately() throws Exception {
-        JsonNode result = simulate("""
-                {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 12}
-                """);
-
-        assertThat(result.get("monthsOfHistory").asInt()).isEqualTo(1);
-        assertThat(result.get("baseline").get("income").decimalValue()).isEqualByComparingTo("1919.86");
-        assertThat(result.get("baseline").get("expenditure").decimalValue()).isEqualByComparingTo("845.56");
-        assertThat(result.get("baseline").get("net").decimalValue()).isEqualByComparingTo("1074.30");
-        // Nothing changed, so the scenario matches the baseline exactly.
-        assertThat(result.get("scenario").get("net").decimalValue()).isEqualByComparingTo("1074.30");
-        assertThat(result.get("monthlyNetChange").decimalValue()).isEqualByComparingTo("0");
-        assertThat(result.get("baselineHorizonNet").decimalValue()).isEqualByComparingTo("12891.60");
-    }
-
-    @Test
-    void answersAHypotheticalPurchase() throws Exception {
-        JsonNode result = simulate("""
-                {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 12,
-                 "oneOffPurchase": 1200.00}
-                """);
-
-        // Taken off once: 12891.60 less 1200.00.
-        assertThat(result.get("scenarioHorizonNet").decimalValue()).isEqualByComparingTo("11691.60");
-        assertThat(result.get("horizonNetChange").decimalValue()).isEqualByComparingTo("-1200.00");
-        assertThat(result.get("monthlyNetChange").decimalValue()).isEqualByComparingTo("0");
-    }
-
-    @Test
-    void answersARecurringChange() throws Exception {
-        JsonNode result = simulate("""
-                {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 6,
-                 "monthlyExpenditureChange": -100.00}
-                """);
-
-        assertThat(result.get("scenario").get("net").decimalValue()).isEqualByComparingTo("1174.30");
-        assertThat(result.get("monthlyNetChange").decimalValue()).isEqualByComparingTo("100.00");
-        assertThat(result.get("horizonNetChange").decimalValue()).isEqualByComparingTo("600.00");
-    }
-
-    @Test
-    void changesNothingStoredWhenAnsweringAScenario() throws Exception {
-        int before = body(mockMvc.perform(get("/api/accounts/" + accountId + "/transactions"))
-                .andReturn()).size();
-
-        simulate("""
-                {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 12,
-                 "oneOffPurchase": 5000.00, "monthlyExpenditureChange": 900.00}
-                """);
-
-        // A hypothetical purchase is not a transaction.
-        assertThat(body(mockMvc.perform(get("/api/accounts/" + accountId + "/transactions")).andReturn())
-                .size()).isEqualTo(before);
-        assertThat(jdbc().queryForObject("SELECT count(*) FROM transactions", Integer.class))
-                .isEqualTo(before);
-    }
-
-    @Test
-    void reportsTheEffectOnASavingsGoal() throws Exception {
-        String goalId = body(mockMvc.perform(post("/api/users/" + userId + "/goals")
-                        .contentType("application/json").content("""
-                                {"name": "Car Fund", "targetAmount": 8000.00, "currency": "GBP",
-                                 "targetDate": "2030-06-01"}
-                                """))
-                .andExpect(status().isCreated())
-                .andReturn()).get("id").asText();
-
-        JsonNode outlook = simulate("""
-                {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 24,
-                 "oneOffPurchase": 1200.00, "goalId": "%s"}
-                """.formatted(goalId)).get("goalOutlook");
-
-        assertThat(outlook.get("goalName").asText()).isEqualTo("Car Fund");
-        assertThat(outlook.get("remaining").decimalValue()).isEqualByComparingTo("8000.00");
-        // 8000 at 1074.30 a month is 8 months; 9200 is 9.
-        assertThat(outlook.get("baselineMonthsToTarget").asInt()).isEqualTo(8);
-        assertThat(outlook.get("scenarioMonthsToTarget").asInt()).isEqualTo(9);
-        assertThat(outlook.get("onTrackBefore").asBoolean()).isTrue();
-    }
-
-    @Test
-    void rejectsAScenarioWithNoPeriodOrHorizon() throws Exception {
-        mockMvc.perform(post(simulations()).contentType("application/json").content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.fields.from").isNotEmpty())
-                .andExpect(jsonPath("$.fields.to").isNotEmpty())
-                .andExpect(jsonPath("$.fields.horizonMonths").isNotEmpty());
-    }
-
-    @Test
-    void rejectsAHorizonAndAPurchaseOutsideWhatIsAllowed() throws Exception {
-        mockMvc.perform(post(simulations()).contentType("application/json").content("""
-                        {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 999}
-                        """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fields.horizonMonths").isNotEmpty());
-
-        mockMvc.perform(post(simulations()).contentType("application/json").content("""
-                        {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 12,
-                         "oneOffPurchase": -50.00}
-                        """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fields.oneOffPurchase").isNotEmpty());
-    }
-
-    @Test
-    void rejectsAPeriodThatEndsBeforeItStarts() throws Exception {
-        mockMvc.perform(post(simulations()).contentType("application/json").content("""
-                        {"from": "2026-09-01", "to": "2026-08-01", "horizonMonths": 12}
-                        """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-    }
-
-    @Test
-    void answersNotFoundForAGoalThatIsNotTheCallers() throws Exception {
-        mockMvc.perform(post(simulations()).contentType("application/json").content("""
-                        {"from": "2026-08-01", "to": "2026-09-01", "horizonMonths": 12,
-                         "goalId": "%s"}
-                        """.formatted(UUID.randomUUID())))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("GOAL_NOT_FOUND"));
-    }
-
-    // --- recategorisation backfill ---
 
     @Test
     void reappliesMerchantRulesToTransactionsImportedBeforeThem() throws Exception {
@@ -219,7 +89,7 @@ class SimulatorAndMaintenanceApiTest extends ApiTestSupport {
     void retrievesTheUserWithoutTheirCredential() throws Exception {
         JsonNode user = body(mockMvc.perform(get("/api/users/" + userId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("simulator@example.com"))
+                .andExpect(jsonPath("$.email").value("maintenance@example.com"))
                 .andReturn());
 
         assertThat(user.toString()).doesNotContain("password", "$2a$");

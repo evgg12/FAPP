@@ -1,72 +1,88 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import type { AccountSummary } from '../api/types'
 import type { AsyncState } from '../hooks/useAsync'
-import type { MonthlySummary, SavingsGoal, SimulationResult } from '../api/types'
-import { PERIOD_SCALES, percent, progressWidth, scaleRange, shortMonth } from '../format'
+import {
+  PERIOD_SCALES,
+  latestMonthWithData,
+  monthRange,
+  percent,
+  progressWidth,
+  scaleRange,
+  yearsWithData,
+} from '../format'
+import { ManageAccounts } from './ManageAccounts'
 import { PeriodPicker } from './PeriodPicker'
-import { TrendChart } from './TrendChart'
-import { SimulatorPanel } from './SimulatorPanel'
 
 function loaded<T>(data: T): AsyncState<T> {
   return { loading: false, data }
 }
 
-const MONTHS: MonthlySummary[] = [
-  { month: '2026-07', income: 2000, expenditure: 1200, netSavings: 800, transactionCount: 20 },
-  { month: '2026-08', income: 2000, expenditure: 2300, netSavings: -300, transactionCount: 24 },
-]
-
-describe('the trend chart', () => {
-  it('draws a bar pair and a net point per month', () => {
-    render(<TrendChart state={loaded(MONTHS)} />)
-
-    const chart = screen.getByRole('img')
-    // Two months, two bars each, plus a dot on the net line for each.
-    expect(chart.querySelectorAll('rect')).toHaveLength(4)
-    expect(chart.querySelectorAll('circle')).toHaveLength(2)
+describe('periods', () => {
+  it('turns a chosen month into the half-open range the API expects', () => {
+    expect(monthRange('2026-08')).toEqual({ from: '2026-08-01', to: '2026-09-01' })
+    // December has to roll the year over.
+    expect(monthRange('2026-12')).toEqual({ from: '2026-12-01', to: '2027-01-01' })
   })
 
-  it('scales below zero so a negative net is not drawn as zero', () => {
-    render(<TrendChart state={loaded(MONTHS)} />)
-
-    const dots = screen.getByRole('img').querySelectorAll('circle')
-    const above = Number(dots[0].getAttribute('cy'))
-    const below = Number(dots[1].getAttribute('cy'))
-    // Larger y is further down the chart, so the losing month sits below the winning one.
-    expect(below).toBeGreaterThan(above)
+  it('offers exactly Month and Annual', () => {
+    expect(PERIOD_SCALES.map((option) => option.label)).toEqual(['Month', 'Annual'])
   })
 
-  it('says so when the period holds no months', () => {
-    render(<TrendChart state={loaded<MonthlySummary[]>([])} />)
+  it('reads Annual as this year so far', () => {
+    const range = scaleRange('year')
 
-    expect(screen.getByText('No months in this period.')).toBeTruthy()
-  })
-})
-
-describe('period scales', () => {
-  it('produces a usable range for every named scale', () => {
-    for (const { scale } of PERIOD_SCALES) {
-      const range = scaleRange(scale)
-      expect(range.from < range.to).toBe(true)
-    }
-  })
-
-  it('starts this month on the first and ends after today', () => {
-    const range = scaleRange('month')
-
-    expect(range.from.endsWith('-01')).toBe(true)
+    expect(range.from.endsWith('-01-01')).toBe(true)
     expect(range.to > new Date().toISOString().slice(0, 10)).toBe(true)
   })
 
-  it('offers the scales as buttons and marks the chosen one', () => {
-    const onChange = vi.fn()
+  it('defaults to the last month that holds transactions, not the real-world month', () => {
+    const months = [
+      { month: '2026-06', transactionCount: 12 },
+      { month: '2026-07', transactionCount: 8 },
+      { month: '2026-08', transactionCount: 0 },
+    ]
+
+    expect(latestMonthWithData(months)).toBe('2026-07')
+    expect(latestMonthWithData([{ month: '2026-08', transactionCount: 0 }])).toBeNull()
+    expect(yearsWithData([{ month: '2024-03', transactionCount: 4 }])).toContain(2024)
+  })
+
+  it('picks a month from dropdowns rather than a typed date', () => {
     render(
-      <PeriodPicker scale="month" range={{ from: '2026-08-01', to: '2026-09-01' }} onChange={onChange} />,
+      <PeriodPicker
+        scale="month"
+        month="2026-08"
+        years={[2026, 2025]}
+        range={{ from: '2026-08-01', to: '2026-09-01' }}
+        onChange={vi.fn()}
+      />,
     )
 
-    const chosen = screen.getByRole('button', { name: 'This month' })
-    expect(chosen.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Custom' }).getAttribute('aria-pressed')).toBe('false')
+    const months = screen.getByLabelText('Month') as HTMLSelectElement
+    expect(months.tagName).toBe('SELECT')
+    expect(months.options).toHaveLength(12)
+    expect(months.value).toBe('08')
+    expect((screen.getByLabelText('Year') as HTMLSelectElement).value).toBe('2026')
+  })
+
+  it('reports the chosen month back to its caller', () => {
+    const onChange = vi.fn()
+    render(
+      <PeriodPicker
+        scale="month"
+        month="2026-08"
+        years={[2026]}
+        range={{ from: '2026-08-01', to: '2026-09-01' }}
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Month'), { target: { value: '11' } })
+    expect(onChange).toHaveBeenCalledWith('month', '2026-11')
+
+    screen.getByRole('button', { name: 'Annual' }).click()
+    expect(onChange).toHaveBeenCalledWith('year', '2026-08')
   })
 })
 
@@ -78,92 +94,51 @@ describe('progress formatting', () => {
     expect(percent(142.5)).toBe('143%')
     expect(percent(4.25)).toBe('4.3%')
   })
-
-  it('shortens a month for an axis label', () => {
-    expect(shortMonth('2026-08')).toBe('Aug 26')
-  })
 })
 
-describe('the simulator', () => {
-  const RESULT: SimulationResult = {
-    baselinePeriod: { from: '2026-01-01', to: '2027-01-01' },
-    monthsOfHistory: 12,
-    horizonMonths: 12,
-    baseline: { income: 2000, expenditure: 1500, net: 500 },
-    scenario: { income: 2000, expenditure: 1350, net: 650 },
-    monthlyNetChange: 150,
-    baselineHorizonNet: 6000,
-    scenarioHorizonNet: 7800,
-    horizonNetChange: 1800,
-  }
+describe('removing an account', () => {
+  const ACCOUNTS: AccountSummary[] = [
+    {
+      accountId: 'a1',
+      accountName: 'Monzo Current',
+      provider: 'monzo',
+      income: 100,
+      expenditure: 40,
+      netSavings: 60,
+      transactionCount: 3,
+    },
+  ]
 
-  /** Mounting loads the goal list, so the render is awaited to let it settle. */
-  async function mount(): Promise<void> {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify([] as SavingsGoal[]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+  it('asks before removing, and does nothing if the answer is no', async () => {
+    const fetching = vi.spyOn(globalThis, 'fetch')
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const onRemoved = vi.fn()
+
+    render(<ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} />)
+    await act(async () => {
+      screen.getByRole('button', { name: 'Remove account' }).click()
+    })
+
+    expect(fetching).not.toHaveBeenCalled()
+    expect(onRemoved).not.toHaveBeenCalled()
+  })
+
+  it('deletes the account and tells its caller which one went', async () => {
+    const fetching = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 204 }))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onRemoved = vi.fn()
+
+    render(<ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} />)
+    await act(async () => {
+      screen.getByRole('button', { name: 'Remove account' }).click()
+    })
+
+    expect(fetching).toHaveBeenCalledWith(
+      '/api/accounts/a1',
+      expect.objectContaining({ method: 'DELETE' }),
     )
-    await act(async () => {
-      render(
-        <SimulatorPanel
-          userId="u1"
-          range={{ from: '2026-01-01', to: '2027-01-01' }}
-          accountId={null}
-        />,
-      )
-    })
-  }
-
-  it('asks for a scenario before showing a projection', async () => {
-    await mount()
-
-    expect(screen.getByText('Describe a change and run it to see the projection.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Run simulation' })).toBeTruthy()
-  })
-
-  it('states plainly that a simulation is not saved', async () => {
-    await mount()
-
-    expect(screen.getByText(/never touches your transactions/)).toBeTruthy()
-  })
-
-  it('reports the horizon figures the API returned, unaltered', async () => {
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([] as SavingsGoal[]), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(RESULT), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-
-    await act(async () => {
-      render(
-        <SimulatorPanel
-          userId="u1"
-          range={{ from: '2026-01-01', to: '2027-01-01' }}
-          accountId={null}
-        />,
-      )
-    })
-    await act(async () => {
-      screen.getByRole('button', { name: 'Run simulation' }).click()
-    })
-
-    // Per-month baseline and scenario net, then the horizon totals — no arithmetic here.
-    expect(screen.getByText('£500.00')).toBeTruthy()
-    expect(screen.getByText('£650.00')).toBeTruthy()
-    expect(screen.getByText('£6,000.00')).toBeTruthy()
-    expect(screen.getByText('£7,800.00')).toBeTruthy()
-    expect(
-      screen.getByText('£150.00 a month, and £1,800.00 across 12 months.'),
-    ).toBeTruthy()
+    expect(onRemoved).toHaveBeenCalledWith('a1')
   })
 })

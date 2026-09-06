@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, clearCredentials, currentEmail } from './api/client'
 import type { DateRange } from './api/types'
 import { useAsync } from './hooks/useAsync'
-import { scaleRange } from './format'
+import {
+  currentYearMonth,
+  historyRange,
+  latestMonthWithData,
+  monthRange,
+  scaleRange,
+  yearsWithData,
+} from './format'
 import type { PeriodScale } from './format'
 import { AccountBreakdown } from './components/AccountBreakdown'
 import { AccountChips } from './components/AccountChips'
@@ -10,30 +17,28 @@ import { AccountForm } from './components/AccountForm'
 import { CategoryBreakdown } from './components/CategoryBreakdown'
 import { GoalsPanel } from './components/GoalsPanel'
 import { LargestExpenses } from './components/LargestExpenses'
+import { ManageAccounts } from './components/ManageAccounts'
 import { PeriodPicker } from './components/PeriodPicker'
 import { RecategorisePanel } from './components/RecategorisePanel'
 import { SignInScreen } from './components/SignInScreen'
-import { SimulatorPanel } from './components/SimulatorPanel'
 import { StatementUpload } from './components/StatementUpload'
 import { SummaryPanel } from './components/SummaryPanel'
 import { TransactionList } from './components/TransactionList'
-import { TrendChart } from './components/TrendChart'
 
 const ACCOUNT_KEY = 'fapp.accountId'
 
-type View = 'dashboard' | 'transactions' | 'goals' | 'simulator' | 'accounts'
+type View = 'dashboard' | 'transactions' | 'goals' | 'accounts'
 
 const VIEWS: { view: View; label: string }[] = [
   { view: 'dashboard', label: 'Dashboard' },
   { view: 'transactions', label: 'Transactions' },
   { view: 'goals', label: 'Goals' },
-  { view: 'simulator', label: 'Simulator' },
   { view: 'accounts', label: 'Accounts' },
 ]
 
 /** Which views the account and period controls actually change. */
-const NEEDS_ACCOUNT: View[] = ['dashboard', 'transactions', 'simulator']
-const NEEDS_PERIOD: View[] = ['dashboard', 'simulator']
+const NEEDS_ACCOUNT: View[] = ['dashboard', 'transactions']
+const NEEDS_PERIOD: View[] = ['dashboard']
 
 /**
  * The application shell: sign in, choose what you are looking at, choose the account and
@@ -52,8 +57,9 @@ export default function App() {
   const [checkingSession, setCheckingSession] = useState(() => currentEmail() !== null)
   const [view, setView] = useState<View>('dashboard')
   const [accountId, setAccountId] = useState<string | null>(() => localStorage.getItem(ACCOUNT_KEY))
-  const [scale, setScale] = useState<PeriodScale>('twelveMonths')
-  const [range, setRange] = useState<DateRange>(() => scaleRange('twelveMonths'))
+  const [scale, setScale] = useState<PeriodScale>('month')
+  const [month, setMonth] = useState(() => currentYearMonth())
+  const [range, setRange] = useState<DateRange>(() => scaleRange('month'))
   // Bumped after an import or a recategorisation so every panel reloads.
   const [dataVersion, setDataVersion] = useState(0)
 
@@ -98,14 +104,35 @@ export default function App() {
     ready ? () => api.categories(userId!, range, accountId ?? undefined) : null,
     analyticsKey,
   )
-  const monthly = useAsync(
-    ready ? () => api.monthly(userId!, range, accountId ?? undefined) : null,
-    analyticsKey,
-  )
   const largest = useAsync(
     ready ? () => api.largestExpenses(userId!, range, accountId ?? undefined, 10) : null,
     analyticsKey,
   )
+  /*
+   * One wide query, only to find out which months hold anything. It is what makes the
+   * month dropdown default to the last month imported rather than to whatever month it
+   * happens to be in the real world.
+   */
+  const history = useAsync(
+    userId ? () => api.monthly(userId, historyRange()) : null,
+    [userId, dataVersion],
+  )
+  const latestMonth = useMemo(
+    () => (history.data ? latestMonthWithData(history.data) : null),
+    [history.data],
+  )
+  const years = useMemo(() => yearsWithData(history.data ?? []), [history.data])
+
+  // Only until the user picks a month themselves; after that their choice stands.
+  const monthChosen = useRef(false)
+  useEffect(() => {
+    if (monthChosen.current || !latestMonth) {
+      return
+    }
+    setMonth(latestMonth)
+    setRange((current) => (scale === 'month' ? monthRange(latestMonth) : current))
+  }, [latestMonth, scale])
+
   const transactions = useAsync(
     accountId ? () => api.transactions(accountId) : null,
     [accountId, dataVersion],
@@ -193,10 +220,14 @@ export default function App() {
             {showPeriodControl && (
               <PeriodPicker
                 scale={scale}
+                month={month}
+                years={years}
                 range={range}
-                onChange={(nextScale, nextRange) => {
+                onChange={(nextScale, nextMonth) => {
+                  monthChosen.current = true
                   setScale(nextScale)
-                  setRange(nextRange)
+                  setMonth(nextMonth)
+                  setRange(nextScale === 'month' ? monthRange(nextMonth) : scaleRange('year'))
                 }}
               />
             )}
@@ -225,7 +256,6 @@ export default function App() {
         {view === 'dashboard' && (
           <>
             <SummaryPanel state={summary} />
-            <TrendChart state={monthly} />
             <div className="grid grid-2">
               <CategoryBreakdown state={categories} />
               <AccountBreakdown state={accounts} />
@@ -245,16 +275,21 @@ export default function App() {
 
         {view === 'goals' && <GoalsPanel userId={userId} />}
 
-        {view === 'simulator' && (
-          <SimulatorPanel userId={userId} range={range} accountId={accountId} />
-        )}
-
         {view === 'accounts' && (
           <>
             <AccountForm
               userId={userId}
               onCreated={(createdId) => {
                 setAccountId(createdId)
+                setDataVersion((version) => version + 1)
+              }}
+            />
+            <ManageAccounts
+              accounts={accounts}
+              onRemoved={(removedId) => {
+                if (removedId === accountId) {
+                  setAccountId(null)
+                }
                 setDataVersion((version) => version + 1)
               }}
             />

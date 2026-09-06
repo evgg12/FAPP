@@ -49,57 +49,42 @@ function isoDay(date: Date): string {
 }
 
 /** A named window of time the dashboard can be looked at through. */
-export type PeriodScale = 'week' | 'month' | 'quarter' | 'year' | 'twelveMonths' | 'custom'
+export type PeriodScale = 'month' | 'year'
 
 export const PERIOD_SCALES: { scale: PeriodScale; label: string }[] = [
-  { scale: 'week', label: 'This week' },
-  { scale: 'month', label: 'This month' },
-  { scale: 'quarter', label: 'Last 3 months' },
-  { scale: 'year', label: 'Year to date' },
-  { scale: 'twelveMonths', label: 'Last 12 months' },
-  { scale: 'custom', label: 'Custom' },
+  { scale: 'month', label: 'Month' },
+  { scale: 'year', label: 'Annual' },
 ]
 
-/**
- * The dates a named scale covers. `to` is exclusive, matching the API, so "this month"
- * ends on the first of next month and today's transactions are included.
- */
-export function scaleRange(scale: PeriodScale): { from: string; to: string } {
+/** `2026-08`, the month a month picker starts on. */
+export function currentYearMonth(): string {
   const now = new Date()
-  const year = now.getUTCFullYear()
-  const month = now.getUTCMonth()
-  const tomorrow = new Date(Date.UTC(year, month, now.getUTCDate() + 1))
-  switch (scale) {
-    case 'week': {
-      // Monday-first, which is how a UK bank week reads.
-      const weekday = (now.getUTCDay() + 6) % 7
-      return {
-        from: isoDay(new Date(Date.UTC(year, month, now.getUTCDate() - weekday))),
-        to: isoDay(tomorrow),
-      }
-    }
-    case 'month':
-      return { from: isoDay(new Date(Date.UTC(year, month, 1))), to: isoDay(tomorrow) }
-    case 'quarter':
-      return {
-        from: isoDay(new Date(Date.UTC(year, month - 2, 1))),
-        to: isoDay(new Date(Date.UTC(year, month + 1, 1))),
-      }
-    case 'year':
-      return { from: isoDay(new Date(Date.UTC(year, 0, 1))), to: isoDay(tomorrow) }
-    case 'twelveMonths':
-    case 'custom':
-    default:
-      return defaultRange()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * The dates one calendar month covers. `to` is exclusive, matching the API, so
+ * `2026-08` is 2026-08-01 up to but not including 2026-09-01.
+ */
+export function monthRange(yearMonth: string): { from: string; to: string } {
+  const [year, month] = yearMonth.split('-').map(Number)
+  return {
+    from: isoDay(new Date(Date.UTC(year, month - 1, 1))),
+    to: isoDay(new Date(Date.UTC(year, month, 1))),
   }
 }
 
-/** `2026-08` as `Aug 26`, for axis labels where the full name will not fit. */
-export function shortMonth(yearMonth: string): string {
-  const date = new Date(`${yearMonth}-01T00:00:00Z`)
-  return `${date.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })} ${String(
-    date.getUTCFullYear(),
-  ).slice(2)}`
+/** The dates a named scale covers: the current month, or this year so far. */
+export function scaleRange(scale: PeriodScale): { from: string; to: string } {
+  if (scale === 'month') {
+    return monthRange(currentYearMonth())
+  }
+  const now = new Date()
+  // Year to date, ending after today so today's transactions are included.
+  return {
+    from: isoDay(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))),
+    to: isoDay(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))),
+  }
 }
 
 /** A percentage the backend calculated, rendered for reading. */
@@ -110,4 +95,41 @@ export function percent(value: number): string {
 /** How far to fill a progress bar. Clamped for drawing only; the figure is not. */
 export function progressWidth(percentage: number): string {
   return `${Math.min(Math.max(percentage, 0), 100)}%`
+}
+
+export const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/** A wide window used only to find out which months actually hold transactions. */
+export function historyRange(years = 6): { from: string; to: string } {
+  const now = new Date()
+  return {
+    from: `${now.getUTCFullYear() - years}-01-01`,
+    to: isoDay(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))),
+  }
+}
+
+/**
+ * The most recent month that actually has transactions in it, which is a more useful
+ * default than the real-world current month — a statement is usually imported after the
+ * month it covers has ended.
+ */
+export function latestMonthWithData(
+  months: { month: string; transactionCount: number }[],
+): string | null {
+  const withData = months.filter((month) => month.transactionCount > 0).map((month) => month.month)
+  return withData.length === 0 ? null : withData.sort().at(-1)!
+}
+
+/** The years to offer in the year dropdown: those with data, newest first. */
+export function yearsWithData(
+  months: { month: string; transactionCount: number }[],
+): number[] {
+  const years = new Set(
+    months.filter((month) => month.transactionCount > 0).map((month) => Number(month.month.slice(0, 4))),
+  )
+  years.add(new Date().getUTCFullYear())
+  return [...years].sort((a, b) => b - a)
 }
