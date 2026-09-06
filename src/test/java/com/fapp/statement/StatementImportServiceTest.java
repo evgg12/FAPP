@@ -290,13 +290,13 @@ class StatementImportServiceTest extends AbstractPostgresTest {
 
     @Test
     void failsClearlyWhenNoAdapterReadsTheAccountsBank() {
-        Account unsupported =
-                Account.of(user, "bank_of_scotland", "BoS Current", AccountType.CURRENT, GBP);
+        Account unsupported = Account.of(user, "starling", "Starling Current", AccountType.CURRENT, GBP);
         inTransaction(em -> em.persist(unsupported));
 
         assertThatExceptionOfType(StatementImportException.class)
                 .isThrownBy(() -> service.importStatement(unsupported, fixture()))
-                .withMessageContaining("no statement adapter is registered for provider 'bank_of_scotland'")
+                .withMessageContaining("no statement adapter is registered for provider 'starling'")
+                .withMessageContaining("bank_of_scotland")
                 .withMessageContaining("monzo");
 
         assertThat(transactions.count()).isZero();

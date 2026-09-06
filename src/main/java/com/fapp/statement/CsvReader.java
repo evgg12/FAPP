@@ -1,6 +1,4 @@
-package com.fapp.statement.monzo;
-
-import com.fapp.statement.StatementParseException;
+package com.fapp.statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +14,7 @@ import java.util.List;
  * doubled quotes standing for a literal quote, and newlines inside a quoted note.
  * Blank lines are ignored so a trailing newline does not produce a phantom record.
  */
-final class CsvReader {
+public final class CsvReader {
 
     private CsvReader() {
     }
@@ -26,7 +24,7 @@ final class CsvReader {
      * @return one list of fields per record, quotes removed and escapes resolved
      * @throws StatementParseException if a quoted field is never closed
      */
-    static List<List<String>> read(String content) {
+    public static List<List<String>> read(String content) {
         List<List<String>> records = new ArrayList<>();
         List<String> record = new ArrayList<>();
         StringBuilder field = new StringBuilder();

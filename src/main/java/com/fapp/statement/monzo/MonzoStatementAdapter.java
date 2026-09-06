@@ -1,6 +1,7 @@
 package com.fapp.statement.monzo;
 
 import com.fapp.money.Money;
+import com.fapp.statement.CsvReader;
 import com.fapp.statement.ParsedStatement;
 import com.fapp.statement.RawTransaction;
 import com.fapp.statement.StatementAdapter;

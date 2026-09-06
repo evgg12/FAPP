@@ -1,6 +1,4 @@
-package com.fapp.statement.monzo;
-
-import com.fapp.statement.StatementParseException;
+package com.fapp.statement;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -59,7 +57,7 @@ class CsvReaderTest {
 
     @Test
     void treatsAQuoteInTheMiddleOfABareFieldAsData() {
-        // Monzo writes merchant names such as GOOGLE *TEMPORARY HOLD unquoted; a stray
+        // Banks write merchant names such as GOOGLE *TEMPORARY HOLD unquoted; a stray
         // quote in one must not be read as a delimiter.
         assertThat(CsvReader.read("a,12\" pizza,c")).containsExactly(List.of("a", "12\" pizza", "c"));
     }
