@@ -56,7 +56,15 @@ Java 21, Spring Boot 3.5, package root `com.fapp`.
 
 ## Current state
 
-Spring Boot skeleton only: entry point, `/api/health`, Flyway baseline with no domain
-tables, PostgreSQL via Docker Compose, context and endpoint tests. There are no entities,
-no adapters, no analytics, no security and no frontend yet. Next up is the unified
-transaction model — the domain schema and entities.
+Spring Boot application with the unified transaction model in place: entry point,
+`/api/health`, PostgreSQL via Docker Compose, and a Flyway-owned schema of `users`,
+`accounts`, `statement_imports`, `transactions` and `transfers` (`V2`). JPA entities and
+a `Money` value object map onto that schema. Tests cover the domain rules as units and
+verify the migration, the database constraints and the JPA mappings against real
+PostgreSQL via Testcontainers, which `./mvnw test` therefore requires Docker for.
+
+There are no repositories yet — no query requirement exists — and no adapters, no
+analytics, no savings goals, no security and no frontend. Next up is Phase 2: the bank
+adapter concept plus Bank of Scotland and Monzo statement import, which is what will
+populate `fingerprint`, `occurrence` and `statement_imports` and give the transfer
+detection logic a caller.
