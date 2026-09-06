@@ -1,5 +1,6 @@
 package com.fapp.api;
 
+import com.fapp.analytics.UnknownAnalyticsSubjectException;
 import com.fapp.statement.DuplicateStatementException;
 import com.fapp.statement.StatementImportException;
 import com.fapp.statement.StatementParseException;
@@ -34,6 +35,12 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<ApiError> notFound(NotFoundException e) {
+        return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
+    }
+
+    /** Analytics asked for a user or account that cannot be resolved for this caller. */
+    @ExceptionHandler(UnknownAnalyticsSubjectException.class)
+    ResponseEntity<ApiError> unknownSubject(UnknownAnalyticsSubjectException e) {
         return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
     }
 
@@ -77,10 +84,13 @@ class ApiExceptionHandler {
                 "VALIDATION_FAILED", "one or more fields were rejected", fields));
     }
 
-    /** A path variable that is not the type it has to be, most often a malformed UUID. */
+    /**
+     * A path variable or query parameter that is not the type it has to be: a malformed
+     * UUID, or a date that is not an ISO date.
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    ResponseEntity<ApiError> invalidPathVariable(MethodArgumentTypeMismatchException e) {
-        return status(HttpStatus.BAD_REQUEST, "INVALID_PATH_PARAMETER",
+    ResponseEntity<ApiError> invalidParameter(MethodArgumentTypeMismatchException e) {
+        return status(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER",
                 "'" + e.getName() + "' is not a valid " + expectedTypeOf(e));
     }
 
@@ -90,11 +100,17 @@ class ApiExceptionHandler {
                 "the request body could not be read as JSON");
     }
 
-    @ExceptionHandler({MissingServletRequestPartException.class,
-            MissingServletRequestParameterException.class})
-    ResponseEntity<ApiError> missingPart(Exception e) {
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    ResponseEntity<ApiError> missingPart(MissingServletRequestPartException e) {
         return status(HttpStatus.BAD_REQUEST, "FILE_REQUIRED",
                 "a statement file must be uploaded as the 'file' part of a multipart request");
+    }
+
+    /** A required query parameter was left out, most often an analytics date range. */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ApiError> missingParameter(MissingServletRequestParameterException e) {
+        return status(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER",
+                "'" + e.getParameterName() + "' is required");
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

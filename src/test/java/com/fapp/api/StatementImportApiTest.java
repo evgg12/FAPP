@@ -191,7 +191,7 @@ class StatementImportApiTest extends ApiTestSupport {
     void rejectsAnAccountIdInThePathThatIsNotAUuid() throws Exception {
         mockMvc.perform(upload("not-a-uuid", fixture("/monzo/statement.csv")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_PATH_PARAMETER"));
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"));
     }
 
     @Test

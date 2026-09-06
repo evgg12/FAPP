@@ -155,7 +155,7 @@ class UserAndAccountApiTest extends ApiTestSupport {
     void rejectsAnAccountIdInAPathThatIsNotAUuid() throws Exception {
         mockMvc.perform(get("/api/accounts/not-a-uuid/transactions"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_PATH_PARAMETER"))
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("UUID")));
     }
 }
