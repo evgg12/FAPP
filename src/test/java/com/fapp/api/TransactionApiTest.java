@@ -102,6 +102,8 @@ class TransactionApiTest extends ApiTestSupport {
 
     @Test
     void answersNotFoundRatherThanAnEmptyListForAnAccountThatDoesNotExist() throws Exception {
+        createUser("no-account@example.com");
+
         mockMvc.perform(get("/api/accounts/" + UUID.randomUUID() + "/transactions"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));

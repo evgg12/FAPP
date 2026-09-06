@@ -44,6 +44,15 @@ public class Account {
     @JoinColumn(name = "user_id", nullable = false, updatable = false)
     private User user;
 
+    /*
+     * The owner's id, read straight from the foreign key column the association already
+     * writes. Without it, userId() would have to call id() on a lazy proxy -- and because
+     * id() is not a JavaBean getter, Hibernate cannot recognise it as the identifier
+     * accessor and initialises the proxy instead, which fails outside a session.
+     */
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private UUID userId;
+
     @Column(name = "provider", nullable = false, length = 40, updatable = false)
     private String provider;
 
@@ -70,6 +79,7 @@ public class Account {
     private Account(User user, String provider, String displayName, AccountType accountType, Currency currency) {
         this.id = UUID.randomUUID();
         this.user = user;
+        this.userId = user.id();
         this.provider = provider;
         this.displayName = displayName;
         this.accountType = accountType;
@@ -117,9 +127,9 @@ public class Account {
         return user;
     }
 
-    /** The owner's id, without forcing the lazy user to load. */
+    /** The owner's id. Safe to read on a detached account: it is a column, not a hop. */
     public UUID userId() {
-        return user.id();
+        return userId;
     }
 
     public String provider() {

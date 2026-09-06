@@ -18,18 +18,19 @@ class SchemaMigrationTest extends AbstractPostgresTest {
         List<String> versions = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class);
 
-        assertThat(versions).containsExactly("1", "2");
+        assertThat(versions).containsExactly("1", "2", "3", "4");
     }
 
     @Test
-    void createsTheFiveDomainTables() {
+    void createsTheDomainTables() {
         List<String> tables = jdbc.queryForList(
                 "SELECT table_name FROM information_schema.tables "
                         + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name",
                 String.class);
 
         assertThat(tables).containsExactly(
-                "accounts", "flyway_schema_history", "statement_imports", "transactions", "transfers", "users");
+                "accounts", "flyway_schema_history", "savings_goals", "statement_imports",
+                "transactions", "transfers", "users");
     }
 
     @Test

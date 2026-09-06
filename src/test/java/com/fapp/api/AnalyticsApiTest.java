@@ -218,10 +218,12 @@ class AnalyticsApiTest extends ApiTestSupport {
     }
 
     @Test
-    void answersNotFoundForAUserThatDoesNotExist() throws Exception {
+    void refusesAnalyticsForAnyUserOtherThanTheCaller() throws Exception {
+        // Refused before it is even asked whether that user exists, so the endpoint
+        // cannot be used to find out which user ids are real.
         mockMvc.perform(get("/api/users/" + UUID.randomUUID() + "/analytics/summary?" + AUGUST))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
@@ -235,6 +237,7 @@ class AnalyticsApiTest extends ApiTestSupport {
     void answersNotFoundForAnAccountBelongingToSomebodyElse() throws Exception {
         String strangerId = createUser("stranger@example.com");
         String theirAccount = createAccount(strangerId, "monzo", "Their Monzo");
+        authenticateAs("analytics@example.com");
 
         // The same answer as an account that does not exist, so analytics cannot be used
         // to discover what other people hold.
@@ -252,10 +255,16 @@ class AnalyticsApiTest extends ApiTestSupport {
                                 fixture("/bankofscotland/statement.csv"))))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get(analytics("summary")))
-                .andExpect(jsonPath("$.transactionCount").value(18));
+        // Each user sees their own figures, and only while authenticated as themselves.
         mockMvc.perform(get("/api/users/" + strangerId + "/analytics/summary?" + AUGUST))
                 .andExpect(jsonPath("$.transactionCount").value(10));
+
+        authenticateAs("analytics@example.com");
+        mockMvc.perform(get(analytics("summary")))
+                .andExpect(jsonPath("$.transactionCount").value(18));
+        // And cannot reach the other's, even knowing their id.
+        mockMvc.perform(get("/api/users/" + strangerId + "/analytics/summary?" + AUGUST))
+                .andExpect(status().isForbidden());
     }
 
     @Test
