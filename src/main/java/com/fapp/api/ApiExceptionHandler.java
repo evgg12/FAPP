@@ -1,0 +1,134 @@
+package com.fapp.api;
+
+import com.fapp.statement.DuplicateStatementException;
+import com.fapp.statement.StatementImportException;
+import com.fapp.statement.StatementParseException;
+import com.fapp.statement.UnsupportedProviderException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+
+/**
+ * Turns the exceptions the domain and the import pipeline already raise into the one
+ * error shape the API returns.
+ *
+ * <p>All the translation lives here so that controllers stay free of it and the domain
+ * stays free of HTTP. Each mapping is a judgement about whose fault the failure is: a
+ * statement FAPP cannot read is the upload's problem, a bank FAPP cannot read is the
+ * account's, and a file already imported is neither — it is a request that has already
+ * been satisfied.
+ */
+@RestControllerAdvice
+class ApiExceptionHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    ResponseEntity<ApiError> notFound(NotFoundException e) {
+        return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
+    }
+
+    /** The statement itself cannot be read: wrong format, or a row FAPP cannot parse. */
+    @ExceptionHandler(StatementParseException.class)
+    ResponseEntity<ApiError> unreadableStatement(StatementParseException e) {
+        return status(HttpStatus.BAD_REQUEST, "STATEMENT_MALFORMED", e.getMessage());
+    }
+
+    /**
+     * Already imported. A conflict rather than an error in the upload: the account is
+     * in the state the caller was asking for.
+     */
+    @ExceptionHandler(DuplicateStatementException.class)
+    ResponseEntity<ApiError> alreadyImported(DuplicateStatementException e) {
+        return status(HttpStatus.CONFLICT, "STATEMENT_ALREADY_IMPORTED", e.getMessage());
+    }
+
+    /**
+     * The file may be fine, but no adapter reads the bank this account is configured
+     * for, so the request cannot be carried out however it is re-sent.
+     */
+    @ExceptionHandler(UnsupportedProviderException.class)
+    ResponseEntity<ApiError> unsupportedProvider(UnsupportedProviderException e) {
+        return status(HttpStatus.UNPROCESSABLE_ENTITY, "PROVIDER_NOT_SUPPORTED", e.getMessage());
+    }
+
+    /** Anything else the import refused, including losing a race to a concurrent import. */
+    @ExceptionHandler(StatementImportException.class)
+    ResponseEntity<ApiError> importFailed(StatementImportException e) {
+        return status(HttpStatus.CONFLICT, "IMPORT_CONFLICT", e.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ApiError> invalidBody(MethodArgumentNotValidException e) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (FieldError error : e.getBindingResult().getFieldErrors()) {
+            fields.putIfAbsent(error.getField(), error.getDefaultMessage());
+        }
+        return ResponseEntity.badRequest().body(ApiError.of(
+                "VALIDATION_FAILED", "one or more fields were rejected", fields));
+    }
+
+    /** A path variable that is not the type it has to be, most often a malformed UUID. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> invalidPathVariable(MethodArgumentTypeMismatchException e) {
+        return status(HttpStatus.BAD_REQUEST, "INVALID_PATH_PARAMETER",
+                "'" + e.getName() + "' is not a valid " + expectedTypeOf(e));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException e) {
+        return status(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST_BODY",
+                "the request body could not be read as JSON");
+    }
+
+    @ExceptionHandler({MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class})
+    ResponseEntity<ApiError> missingPart(Exception e) {
+        return status(HttpStatus.BAD_REQUEST, "FILE_REQUIRED",
+                "a statement file must be uploaded as the 'file' part of a multipart request");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> uploadTooLarge(MaxUploadSizeExceededException e) {
+        return status(HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE",
+                "the uploaded statement is larger than this API accepts");
+    }
+
+    /**
+     * A domain rule refused the input: an amount FAPP would have to round, a currency
+     * that is not the account's, an unusable email. The message comes from the domain,
+     * which states these plainly enough to show a caller.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiError> rejectedByDomain(IllegalArgumentException e) {
+        return status(HttpStatus.BAD_REQUEST, "INVALID_INPUT", e.getMessage());
+    }
+
+    /**
+     * A uniqueness or referential rule in the database refused the write — a second
+     * user on one email address, most likely. Reported without the SQL.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> constraintViolated(DataIntegrityViolationException e) {
+        return status(HttpStatus.CONFLICT, "CONFLICT",
+                "the request conflicts with data that already exists");
+    }
+
+    private static String expectedTypeOf(MethodArgumentTypeMismatchException e) {
+        Class<?> required = e.getRequiredType();
+        return required == null ? "value" : required.getSimpleName();
+    }
+
+    private static ResponseEntity<ApiError> status(HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status).body(ApiError.of(code, message));
+    }
+}
