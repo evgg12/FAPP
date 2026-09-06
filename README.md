@@ -26,18 +26,21 @@ into a single transaction model, and then answers questions like:
 
 ## Current project status
 
-**Phase 0–1 foundation.** The repository currently contains a runnable Spring Boot 3
-skeleton and nothing more:
+**Phase 1 — core domain.** The repository contains a runnable Spring Boot 3 application
+and the unified transaction model:
 
 - Spring Boot 3.5 / Java 21 application with the Maven Wrapper
-- Flyway migration infrastructure with a baseline migration (**no domain tables yet**)
+- Flyway-owned schema: `V1` baseline, `V2` the core financial domain
+- `users`, `accounts`, `statement_imports`, `transactions`, `transfers`
+- JPA entities and a `Money` value object mapped onto that schema, never the reverse
 - PostgreSQL configured through environment variables
 - `docker-compose.yml` running PostgreSQL for local development
 - `GET /api/health` liveness endpoint
-- Context-load and endpoint tests (`./mvnw test`)
+- Unit tests for the domain rules plus Testcontainers integration tests that verify the
+  migration, every database constraint and the JPA mappings against real PostgreSQL
 
-Not yet implemented: domain entities, bank import adapters, categorisation, analytics,
-savings goals, the scenario simulator, authentication, the frontend and every later-phase
+Not yet implemented: bank import adapters, categorisation rules, analytics, savings
+goals, the scenario simulator, authentication, the frontend and every later-phase
 technology. See [FAPP_SPECIFICATIONS.md](FAPP_SPECIFICATIONS.md) for the full plan.
 
 ## Technology stack
@@ -50,12 +53,12 @@ Currently in use:
 | Backend  | Spring Boot 3.5 (Web, Data JPA, Validation) |
 | Database | PostgreSQL 17, schema owned by Flyway   |
 | Build    | Maven (via Maven Wrapper)               |
-| Testing  | JUnit 5, Spring Boot Test               |
+| Testing  | JUnit 5, AssertJ, Testcontainers        |
 | Local infra | Docker Compose                       |
 
 Intended later, each introduced only when it solves a real problem: Spring Security with
-JWT, OpenAPI, React + TypeScript, Testcontainers, k6, GitHub Actions, Python/FastAPI for
-the AI assistant, Kafka, Redis, OpenTelemetry/Prometheus/Grafana, and AWS/Terraform.
+JWT, OpenAPI, React + TypeScript, k6, GitHub Actions, Python/FastAPI for the AI
+assistant, Kafka, Redis, OpenTelemetry/Prometheus/Grafana, and AWS/Terraform.
 
 ## MVP scope
 
@@ -124,9 +127,14 @@ Running from IntelliJ works the same way — start the container, then run
 Tests and build:
 
 ```bash
-./mvnw test       # unit and web-layer tests, no database required
+./mvnw test       # requires Docker: integration tests start their own PostgreSQL
 ./mvnw package    # builds target/fapp-0.0.1-SNAPSHOT.jar
 ```
+
+The integration tests start a throwaway PostgreSQL through Testcontainers rather than
+using the Docker Compose database, so running them never touches local development data.
+They exist because Flyway owns the schema and `ddl-auto` is `none`: nothing else would
+notice if an entity and the migration stopped agreeing.
 
 Configuration is environment-driven; **no credentials are committed**. The application
 reads `FAPP_DB_HOST`, `FAPP_DB_PORT`, `FAPP_DB_NAME`, `FAPP_DB_USER`, `FAPP_DB_PASSWORD`
@@ -157,3 +165,13 @@ as real environment variables, or sets `SPRING_DATASOURCE_URL` directly.
 Flyway owns the schema; `spring.jpa.hibernate.ddl-auto` is `none` and must stay that way.
 Migrations live in `src/main/resources/db/migration` as `V<n>__<description>.sql`, are
 forward-only, and are never edited once they have been applied.
+
+| Migration | Contents |
+|-----------|----------|
+| `V1__baseline.sql` | Establishes the migration baseline. No domain tables. |
+| `V2__transaction_domain.sql` | `users`, `accounts`, `statement_imports`, `transactions`, `transfers`, with the constraints that keep financial data correct. |
+
+Several foreign keys deliberately carry redundant columns so that ownership and
+currency invariants are enforced by the database rather than by application discipline:
+a transaction cannot claim a user who does not own its account, cannot hold a currency
+other than its account's, and cannot cite an import belonging to a different account.
