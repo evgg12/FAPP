@@ -36,6 +36,15 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!--
+          Authentication and password hashing. Financial data cannot be served without
+          knowing who is asking, and hashing is not something to hand-roll.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- Flyway owns the database schema; JPA/Hibernate only maps onto it. -->
         <dependency>
             <groupId>org.flywaydb</groupId>

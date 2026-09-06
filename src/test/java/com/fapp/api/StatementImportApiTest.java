@@ -78,6 +78,8 @@ class StatementImportApiTest extends ApiTestSupport {
 
     @Test
     void answersNotFoundForAnImportThatDoesNotExist() throws Exception {
+        createUser("no-import@example.com");
+
         mockMvc.perform(get("/api/imports/" + UUID.randomUUID()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("IMPORT_NOT_FOUND"));
@@ -162,6 +164,8 @@ class StatementImportApiTest extends ApiTestSupport {
 
     @Test
     void answersNotFoundForAnAccountThatDoesNotExist() throws Exception {
+        createUser("no-account@example.com");
+
         mockMvc.perform(upload(UUID.randomUUID().toString(), fixture("/monzo/statement.csv")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));
@@ -189,6 +193,8 @@ class StatementImportApiTest extends ApiTestSupport {
 
     @Test
     void rejectsAnAccountIdInThePathThatIsNotAUuid() throws Exception {
+        createUser("bad-path@example.com");
+
         mockMvc.perform(upload("not-a-uuid", fixture("/monzo/statement.csv")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"));

@@ -2,6 +2,7 @@ package com.fapp.api;
 
 import com.fapp.account.Account;
 import com.fapp.account.AccountRepository;
+import com.fapp.security.CurrentUser;
 import com.fapp.statement.StatementImport;
 import com.fapp.statement.StatementImportService;
 import com.fapp.transaction.Transaction;
@@ -42,19 +43,24 @@ class AccountController {
     private final AccountRepository accounts;
     private final TransactionRepository transactions;
     private final StatementImportService statementImports;
+    private final CurrentUser currentUser;
 
     AccountController(UserRepository users,
                       AccountRepository accounts,
                       TransactionRepository transactions,
-                      StatementImportService statementImports) {
+                      StatementImportService statementImports,
+                      CurrentUser currentUser) {
         this.users = users;
         this.accounts = accounts;
         this.transactions = transactions;
         this.statementImports = statementImports;
+        this.currentUser = currentUser;
     }
 
     @PostMapping
     ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
+        // An account may only be opened for oneself.
+        currentUser.requireSelf(request.userId());
         User owner = users.findById(request.userId()).orElseThrow(() -> new NotFoundException(
                 "USER_NOT_FOUND", "no user with id " + request.userId()));
 
@@ -90,8 +96,7 @@ class AccountController {
     @PostMapping("/{accountId}/statements")
     ResponseEntity<StatementImportResponse> importStatement(@PathVariable UUID accountId,
                                                             @RequestPart("file") MultipartFile file) {
-        Account account = accounts.findByIdWithUser(accountId).orElseThrow(() -> new NotFoundException(
-                "ACCOUNT_NOT_FOUND", "no account with id " + accountId));
+        Account account = ownedAccount(accountId);
         if (file.isEmpty()) {
             throw new IllegalArgumentException("the uploaded statement file is empty");
         }
@@ -102,14 +107,34 @@ class AccountController {
                 .body(StatementImportResponse.of(result));
     }
 
+    @GetMapping("/{accountId}")
+    AccountResponse get(@PathVariable UUID accountId) {
+        return AccountResponse.of(ownedAccount(accountId));
+    }
+
     @GetMapping("/{accountId}/transactions")
     List<TransactionResponse> transactions(@PathVariable UUID accountId) {
-        if (!accounts.existsById(accountId)) {
-            throw new NotFoundException("ACCOUNT_NOT_FOUND", "no account with id " + accountId);
-        }
+        ownedAccount(accountId);
         return transactions.findByAccount_IdOrderByBookingDateAscCreatedAtAsc(accountId).stream()
                 .map(TransactionResponse::of)
                 .toList();
+    }
+
+    /**
+     * The account behind this id, if it belongs to the caller.
+     *
+     * <p>Fetched with its owner, both so the response can report {@code userId} outside a
+     * transaction and so ownership can be proved without a second query. Someone else's
+     * account reports the same not-found as one that does not exist: answering 403 would
+     * confirm that the id is real, which is enough to enumerate other people's accounts.
+     */
+    private Account ownedAccount(UUID accountId) {
+        Account account = accounts.findByIdWithUser(accountId).orElseThrow(() -> new NotFoundException(
+                "ACCOUNT_NOT_FOUND", "no account with id " + accountId));
+        if (!account.userId().equals(currentUser.requireId())) {
+            throw new NotFoundException("ACCOUNT_NOT_FOUND", "no account with id " + accountId);
+        }
+        return account;
     }
 
     private static byte[] bytesOf(MultipartFile file) {

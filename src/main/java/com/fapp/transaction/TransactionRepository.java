@@ -18,6 +18,13 @@ import org.springframework.data.repository.query.Param;
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
     /**
+     * A user's transactions in one category, used to reapply merchant rules to rows
+     * imported before a rule existed. Scoped by user so a backfill can never reach
+     * across owners.
+     */
+    List<Transaction> findByUserIdAndCategory(UUID userId, Category category);
+
+    /**
      * An account's transactions, oldest first, for reading back what was imported.
      * Ordered by the analytical date and then by insertion so that repeats of the same
      * day come back in a stable order.

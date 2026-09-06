@@ -18,7 +18,7 @@ class UserAndAccountApiTest extends ApiTestSupport {
         mockMvc.perform(post("/api/users")
                         .contentType("application/json")
                         .content("""
-                                {"email": "Owner@Example.com", "displayName": "  Owner  "}
+                                {"email": "Owner@Example.com", "displayName": "  Owner  ", "password": "correct-horse-battery-staple"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
@@ -34,12 +34,13 @@ class UserAndAccountApiTest extends ApiTestSupport {
         MvcResult result = mockMvc.perform(post("/api/users")
                         .contentType("application/json")
                         .content("""
-                                {"email": "not-an-address", "displayName": ""}
+                                {"email": "not-an-address", "displayName": "", "password": "short"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.fields.email").isNotEmpty())
                 .andExpect(jsonPath("$.fields.displayName").isNotEmpty())
+                .andExpect(jsonPath("$.fields.password").isNotEmpty())
                 .andReturn();
 
         assertThat(body(result).has("timestamp")).isTrue();
@@ -52,7 +53,7 @@ class UserAndAccountApiTest extends ApiTestSupport {
         mockMvc.perform(post("/api/users")
                         .contentType("application/json")
                         .content("""
-                                {"email": "TAKEN@example.com", "displayName": "Impostor"}
+                                {"email": "TAKEN@example.com", "displayName": "Impostor", "password": "correct-horse-battery-staple"}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
@@ -98,15 +99,19 @@ class UserAndAccountApiTest extends ApiTestSupport {
     }
 
     @Test
-    void refusesAnAccountForAUserThatDoesNotExist() throws Exception {
+    void refusesAnAccountOpenedForSomebodyElse() throws Exception {
+        createUser("owner-of-nothing@example.com");
+
+        // An account may only be opened for oneself, so naming another user is refused
+        // before it is even asked whether that user exists.
         mockMvc.perform(post("/api/accounts")
                         .contentType("application/json")
                         .content("""
                                 {"userId": "%s", "provider": "monzo", "displayName": "Ghost",
                                  "accountType": "CURRENT", "currency": "GBP"}
                                 """.formatted(UUID.randomUUID())))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
@@ -141,6 +146,8 @@ class UserAndAccountApiTest extends ApiTestSupport {
 
     @Test
     void rejectsAUserIdThatIsNotAUuid() throws Exception {
+        createUser("bad-uuid@example.com");
+
         mockMvc.perform(post("/api/accounts")
                         .contentType("application/json")
                         .content("""
@@ -153,6 +160,8 @@ class UserAndAccountApiTest extends ApiTestSupport {
 
     @Test
     void rejectsAnAccountIdInAPathThatIsNotAUuid() throws Exception {
+        createUser("bad-path@example.com");
+
         mockMvc.perform(get("/api/accounts/not-a-uuid/transactions"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))

@@ -88,6 +88,14 @@ public class Transaction {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
+    /*
+     * Read straight from the foreign key column the association writes, for the same
+     * reason userId is denormalised: accountId() must not have to initialise a lazy
+     * proxy, which fails once the request's session has closed.
+     */
+    @Column(name = "account_id", insertable = false, updatable = false)
+    private UUID accountId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "statement_import_id", nullable = false, updatable = false)
     private StatementImport statementImport;
@@ -163,6 +171,7 @@ public class Transaction {
     private Transaction(Builder builder) {
         this.id = UUID.randomUUID();
         this.account = builder.account;
+        this.accountId = builder.account.id();
         this.userId = builder.account.userId();
         this.statementImport = builder.statementImport;
         this.bookingDate = builder.bookingDate;
@@ -207,9 +216,9 @@ public class Transaction {
         return account;
     }
 
-    /** The owning account's id, without forcing the lazy account to load. */
+    /** The owning account's id. Safe on a detached transaction: it is a column. */
     public UUID accountId() {
-        return account.id();
+        return accountId;
     }
 
     public UUID userId() {
