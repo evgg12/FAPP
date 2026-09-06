@@ -82,9 +82,10 @@ public class StatementImportService {
      *                  transaction must be in
      * @param statement the raw bytes of the upload
      * @return the record of what was imported, including how many rows were already held
-     * @throws StatementImportException if no adapter reads the account's bank, the file
-     *                                  has already been imported, or a concurrent
-     *                                  import stored these transactions first
+     * @throws UnsupportedProviderException  if no adapter reads the account's bank
+     * @throws DuplicateStatementException   if this exact file is already imported
+     * @throws StatementImportException      if a concurrent import stored these
+     *                                       transactions first
      * @throws StatementParseException  if the file itself cannot be read
      */
     @Transactional
@@ -96,7 +97,7 @@ public class StatementImportService {
         StatementAdapter adapter = adapterFor(account);
 
         if (statementImports.existsByAccount_IdAndContentHash(account.id(), contentHash)) {
-            throw new StatementImportException(
+            throw new DuplicateStatementException(
                     "this statement has already been imported into " + account.displayName());
         }
 
@@ -118,7 +119,7 @@ public class StatementImportService {
     private StatementAdapter adapterFor(Account account) {
         StatementAdapter adapter = adaptersByProvider.get(account.provider());
         if (adapter == null) {
-            throw new StatementImportException(
+            throw new UnsupportedProviderException(
                     "no statement adapter is registered for provider '" + account.provider()
                             + "'; known providers are " + adaptersByProvider.keySet().stream().sorted().toList());
         }

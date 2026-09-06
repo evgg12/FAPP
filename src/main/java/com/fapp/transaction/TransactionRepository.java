@@ -18,6 +18,13 @@ import org.springframework.data.repository.query.Param;
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
     /**
+     * An account's transactions, oldest first, for reading back what was imported.
+     * Ordered by the analytical date and then by insertion so that repeats of the same
+     * day come back in a stable order.
+     */
+    List<Transaction> findByAccount_IdOrderByBookingDateAscCreatedAtAsc(UUID accountId);
+
+    /**
      * Which of a statement's transaction ids this account already holds. The bank's own
      * id is authoritative, so anything returned here is a duplicate whatever else the
      * row says.
