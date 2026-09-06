@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -110,6 +111,25 @@ class AccountController {
     @GetMapping("/{accountId}")
     AccountResponse get(@PathVariable UUID accountId) {
         return AccountResponse.of(ownedAccount(accountId));
+    }
+
+    /**
+     * Removes an account and everything imported into it.
+     *
+     * <p>The schema already says what "everything" means: the foreign keys from
+     * {@code statement_imports}, {@code transactions} and {@code transfers} all cascade,
+     * so the database removes the account's history in one statement rather than the
+     * application deleting four tables in an order it has to get right. Savings goals
+     * belong to the user, not to an account, and are untouched.
+     *
+     * <p>Irreversible, and deliberately not softened into a flag: FAPP stores only what
+     * analysis needs, so keeping a deleted account's transactions to hide them later
+     * would retain more than it should.
+     */
+    @DeleteMapping("/{accountId}")
+    ResponseEntity<Void> delete(@PathVariable UUID accountId) {
+        accounts.delete(ownedAccount(accountId));
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{accountId}/transactions")

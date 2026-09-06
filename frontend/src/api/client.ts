@@ -3,8 +3,6 @@ import type {
   AccountSummary,
   RecategorisationResult,
   SavingsGoal,
-  Scenario,
-  SimulationResult,
   AccountType,
   ApiErrorBody,
   CategorySummary,
@@ -166,6 +164,11 @@ export const api = {
   },
 
   /** Uploads a statement as the `file` part, exactly as the backend expects. */
+  /** Removes an account and everything imported into it. Not reversible. */
+  deleteAccount(accountId: string): Promise<void> {
+    return request<void>(`/api/accounts/${accountId}`, { method: 'DELETE' })
+  },
+
   uploadStatement(accountId: string, file: File): Promise<StatementImport> {
     const form = new FormData()
     form.append('file', file)
@@ -238,11 +241,6 @@ export const api = {
 
   deleteGoal(userId: string, goalId: string): Promise<void> {
     return request<void>(`/api/users/${userId}/goals/${goalId}`, { method: 'DELETE' })
-  },
-
-  /** Runs a what-if scenario. Creates nothing: the answer is a calculation. */
-  simulate(userId: string, scenario: Scenario): Promise<SimulationResult> {
-    return request<SimulationResult>(`/api/users/${userId}/simulations`, json(scenario))
   },
 
   /** Reapplies today's merchant rules to transactions imported before them. */
