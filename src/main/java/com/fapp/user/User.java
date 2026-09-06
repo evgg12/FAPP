@@ -30,6 +30,13 @@ public class User {
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
 
+    /**
+     * The encoded password, never the password. Null for a user who has no credential and
+     * therefore cannot sign in.
+     */
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -61,6 +68,22 @@ public class User {
             throw new IllegalArgumentException(field + " must not be blank");
         }
         return trimmed;
+    }
+
+    /**
+     * Sets the credential this user signs in with.
+     *
+     * @param passwordHash output of a password encoder. Passing a plaintext password here
+     *                     would store a plaintext password, so callers hash first and this
+     *                     accepts nothing that looks like it was forgotten.
+     */
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = requireText(passwordHash, "passwordHash");
+    }
+
+    /** The encoded password, or empty for a user who cannot sign in. */
+    public java.util.Optional<String> passwordHash() {
+        return java.util.Optional.ofNullable(passwordHash);
     }
 
     public void rename(String displayName) {

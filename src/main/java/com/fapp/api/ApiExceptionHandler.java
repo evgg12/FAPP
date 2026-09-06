@@ -1,10 +1,14 @@
 package com.fapp.api;
 
+import com.fapp.analytics.MixedCurrencyException;
 import com.fapp.analytics.UnknownAnalyticsSubjectException;
+import com.fapp.goal.GoalNotFoundException;
+import com.fapp.security.ForbiddenException;
 import com.fapp.statement.DuplicateStatementException;
 import com.fapp.statement.StatementImportException;
 import com.fapp.statement.StatementParseException;
 import com.fapp.statement.UnsupportedProviderException;
+import com.fapp.transaction.UnknownUserException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,9 +37,43 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 @RestControllerAdvice
 class ApiExceptionHandler {
 
+    /**
+     * The caller is known but is asking for another user's data. 403 rather than 404
+     * because the path they sent already contains the user id, so there is nothing left
+     * to conceal; resources reached by their own id answer 404 instead.
+     */
+    @ExceptionHandler(ForbiddenException.class)
+    ResponseEntity<ApiError> forbidden(ForbiddenException e) {
+        return status(HttpStatus.FORBIDDEN, "FORBIDDEN", e.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<ApiError> notFound(NotFoundException e) {
         return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
+    }
+
+    /**
+     * A savings goal, or its owner, could not be resolved for this caller. A goal
+     * belonging to somebody else reports the same thing as one that does not exist.
+     */
+    @ExceptionHandler(GoalNotFoundException.class)
+    ResponseEntity<ApiError> goalNotFound(GoalNotFoundException e) {
+        return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
+    }
+
+    @ExceptionHandler(UnknownUserException.class)
+    ResponseEntity<ApiError> unknownUser(UnknownUserException e) {
+        return status(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", e.getMessage());
+    }
+
+    /**
+     * A total was asked for that would have to add unlike currencies. Unprocessable
+     * rather than a bad request: the question is well formed, there is simply no correct
+     * answer to give without an exchange rate.
+     */
+    @ExceptionHandler(MixedCurrencyException.class)
+    ResponseEntity<ApiError> mixedCurrencies(MixedCurrencyException e) {
+        return status(HttpStatus.UNPROCESSABLE_ENTITY, "MIXED_CURRENCY_ACCOUNTS", e.getMessage());
     }
 
     /** Analytics asked for a user or account that cannot be resolved for this caller. */

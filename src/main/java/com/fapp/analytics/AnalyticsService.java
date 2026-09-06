@@ -6,6 +6,7 @@ import com.fapp.transaction.Category;
 import com.fapp.user.UserRepository;
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.Currency;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -146,6 +147,9 @@ public class AnalyticsService {
 
     private void require(AnalyticsScope scope) {
         requireUser(scope.userId());
+        if (scope.accountId() == null) {
+            requireOneCurrency(scope.userId());
+        }
         if (scope.accountId() != null) {
             // Resolved through the owner, so an account belonging to someone else is
             // indistinguishable from one that does not exist.
@@ -155,6 +159,23 @@ public class AnalyticsService {
                 throw new UnknownAnalyticsSubjectException(
                         "ACCOUNT_NOT_FOUND", "no account with id " + scope.accountId() + " for this user");
             }
+        }
+    }
+
+    /**
+     * Refuses a user-wide total that would have to add unlike currencies.
+     *
+     * <p>Only checked when no account was named: an account has one currency for its
+     * life, so a figure narrowed to one account is always coherent. Converting would need
+     * an exchange rate and a date, which is a feature rather than a default.
+     */
+    private void requireOneCurrency(UUID userId) {
+        List<Currency> currencies = accounts.findCurrenciesByUser(userId);
+        if (currencies.size() > 1) {
+            throw new MixedCurrencyException(
+                    "this user holds accounts in " + currencies.stream()
+                            .map(Currency::getCurrencyCode).sorted().toList()
+                            + ", which cannot be totalled together; ask for one account at a time");
         }
     }
 

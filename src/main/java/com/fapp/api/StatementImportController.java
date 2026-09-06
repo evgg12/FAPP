@@ -1,5 +1,7 @@
 package com.fapp.api;
 
+import com.fapp.security.CurrentUser;
+import com.fapp.statement.StatementImport;
 import com.fapp.statement.StatementImportRepository;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,16 +18,23 @@ import org.springframework.web.bind.annotation.RestController;
 class StatementImportController {
 
     private final StatementImportRepository statementImports;
+    private final CurrentUser currentUser;
 
-    StatementImportController(StatementImportRepository statementImports) {
+    StatementImportController(StatementImportRepository statementImports, CurrentUser currentUser) {
         this.statementImports = statementImports;
+        this.currentUser = currentUser;
     }
 
     @GetMapping("/{importId}")
     StatementImportResponse get(@PathVariable UUID importId) {
-        return statementImports.findByIdWithAccount(importId)
-                .map(StatementImportResponse::of)
+        StatementImport statementImport = statementImports.findByIdWithAccount(importId)
                 .orElseThrow(() -> new NotFoundException(
                         "IMPORT_NOT_FOUND", "no statement import with id " + importId));
+        // Somebody else's import is reported as absent rather than forbidden, so the id
+        // cannot be used to learn that it exists.
+        if (!statementImport.userId().equals(currentUser.requireId())) {
+            throw new NotFoundException("IMPORT_NOT_FOUND", "no statement import with id " + importId);
+        }
+        return StatementImportResponse.of(statementImport);
     }
 }

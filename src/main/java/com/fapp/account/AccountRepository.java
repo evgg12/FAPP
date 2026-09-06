@@ -1,5 +1,6 @@
 package com.fapp.account;
 
+import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,4 +28,13 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
      * two there is nowhere to transfer to, so there is nothing to search for.
      */
     long countByUser_Id(UUID userId);
+
+    /**
+     * The distinct currencies a user holds accounts in.
+     *
+     * <p>Analytics asks because it sums stored amounts: totalling across accounts is only
+     * meaningful while they share a currency.
+     */
+    @Query("select distinct a.currency from Account a where a.user.id = :userId")
+    List<Currency> findCurrenciesByUser(@Param("userId") UUID userId);
 }
