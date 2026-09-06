@@ -143,3 +143,74 @@ export interface ApiErrorBody {
   fields?: Record<string, string>
   timestamp: string
 }
+
+/** A savings goal with the progress the backend calculated. */
+export interface SavingsGoal {
+  id: string
+  userId: string
+  name: string
+  currency: string
+  targetAmount: number
+  currentAmount: number
+  remainingAmount: number
+  percentageComplete: number
+  achieved: boolean
+  targetDate: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** Monthly income, expenditure and what is left. */
+export interface MonthlyFigures {
+  income: number
+  expenditure: number
+  net: number
+}
+
+/** What a scenario would do to a savings goal. */
+export interface GoalOutlook {
+  goalId?: string
+  goalName: string
+  remaining: number
+  baselineMonthsToTarget?: number
+  scenarioMonthsToTarget?: number
+  baselineProjectedDate?: string
+  scenarioProjectedDate?: string
+  onTrackBefore: boolean
+  onTrackAfter: boolean
+}
+
+/**
+ * A what-if answer. `baseline` is real history; everything named `scenario` is
+ * hypothetical and stored nowhere.
+ */
+export interface SimulationResult {
+  baselinePeriod: DateRange
+  monthsOfHistory: number
+  horizonMonths: number
+  baseline: MonthlyFigures
+  scenario: MonthlyFigures
+  monthlyNetChange: number
+  baselineHorizonNet: number
+  scenarioHorizonNet: number
+  horizonNetChange: number
+  goalOutlook?: GoalOutlook
+}
+
+/** What a recategorisation pass considered and changed. */
+export interface RecategorisationResult {
+  examined: number
+  recategorised: number
+}
+
+/** A hypothetical change to test. All figures optional. */
+export interface Scenario {
+  from: string
+  to: string
+  accountId?: string
+  horizonMonths: number
+  oneOffPurchase?: number
+  monthlyExpenditureChange?: number
+  monthlyIncomeChange?: number
+  goalId?: string
+}

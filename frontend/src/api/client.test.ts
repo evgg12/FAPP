@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, analyticsQuery, api } from './client'
+import { ApiError, analyticsQuery, api, clearCredentials, currentEmail, setCredentials } from './client'
 import type { FinancialSummary } from './types'
 
 /** A stand-in for fetch, declared with fetch's own signature so its calls are typed. */
@@ -27,6 +27,7 @@ function calledInit(fetchMock: FetchMock): RequestInit {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  clearCredentials()
 })
 
 describe('reading a successful response', () => {
@@ -91,7 +92,7 @@ describe('surfacing an API error', () => {
       ),
     )
 
-    const failure = (await api.createUser('nope', '').catch((error: unknown) => error)) as ApiError
+    const failure = (await api.createUser('nope', '', 'short').catch((error: unknown) => error)) as ApiError
 
     expect(failure.code).toBe('VALIDATION_FAILED')
     expect(failure.fields?.email).toContain('well-formed')
@@ -164,19 +165,75 @@ describe('request building', () => {
     expect(form.get('file')).toBeInstanceOf(File)
     expect((form.get('file') as File).name).toBe('statement.csv')
     // No Content-Type is set by hand: the browser adds the multipart boundary.
-    expect(init.headers).toBeUndefined()
+    expect((init.headers ?? {}) as Record<string, string>).not.toHaveProperty('Content-Type')
   })
 
   it('posts a user as JSON', async () => {
     const fetchMock = respondWith({ id: 'user-1' })
     vi.stubGlobal('fetch', fetchMock)
 
-    await api.createUser('owner@example.com', 'Owner')
+    await api.createUser('owner@example.com', 'Owner', 'correct-horse-battery-staple')
 
     const init = calledInit(fetchMock)
     expect(JSON.parse(String(init.body))).toEqual({
       email: 'owner@example.com',
       displayName: 'Owner',
+      password: 'correct-horse-battery-staple',
     })
+  })
+})
+
+describe('authentication', () => {
+  it('sends no Authorization header before signing in', async () => {
+    const fetchMock = respondWith({ id: 'user-1' })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.createUser('new@example.com', 'New', 'correct-horse-battery-staple')
+
+    const headers = (calledInit(fetchMock).headers ?? {}) as Record<string, string>
+    expect(headers.Authorization).toBeUndefined()
+  })
+
+  it('sends the stored credentials as HTTP Basic on every request', async () => {
+    const fetchMock = respondWith([])
+    vi.stubGlobal('fetch', fetchMock)
+    setCredentials({ email: 'owner@example.com', password: 'correct-horse-battery-staple' })
+
+    await api.transactions('account-1')
+
+    const headers = (calledInit(fetchMock).headers ?? {}) as Record<string, string>
+    expect(headers.Authorization).toBe(
+      `Basic ${btoa('owner@example.com:correct-horse-battery-staple')}`,
+    )
+  })
+
+  it('reports and forgets who is signed in', () => {
+    expect(currentEmail()).toBeNull()
+
+    setCredentials({ email: 'owner@example.com', password: 'secret-enough-password' })
+    expect(currentEmail()).toBe('owner@example.com')
+
+    clearCredentials()
+    expect(currentEmail()).toBeNull()
+  })
+
+  it('surfaces a rejected credential as an unauthorized error', async () => {
+    vi.stubGlobal('fetch', respondWith({}, { status: 401 }))
+    setCredentials({ email: 'owner@example.com', password: 'wrong' })
+
+    const failure = (await api.me().catch((error: unknown) => error)) as ApiError
+
+    expect(failure.status).toBe(401)
+  })
+})
+
+describe('reading a user and their accounts', () => {
+  it('asks the dedicated endpoints', async () => {
+    const fetchMock = respondWith([])
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.accountsOf('user-1')
+
+    expect(calledUrl(fetchMock)).toBe('/api/users/user-1/accounts')
   })
 })

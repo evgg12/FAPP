@@ -1,0 +1,57 @@
+# Production-shaped deployment: database, backend, frontend. Three containers and
+# nothing else — no message broker, no cache, no service mesh, because nothing in
+# FAPP currently needs one.
+#
+# Every secret comes from the environment. There are no defaults for the database
+# password or the application user's own credentials: `?err` makes Compose refuse to
+# start rather than quietly bring up a public deployment with a known password.
+#
+#   FAPP_DB_PASSWORD=... docker compose -f docker-compose.prod.yml up -d --build
+#
+# The database port is deliberately not published. Only the frontend is reachable.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${FAPP_DB_NAME:-fapp}
+      POSTGRES_USER: ${FAPP_DB_USER:-fapp}
+      POSTGRES_PASSWORD: ${FAPP_DB_PASSWORD:?FAPP_DB_PASSWORD must be set}
+    volumes:
+      - fapp-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FAPP_DB_USER:-fapp} -d ${FAPP_DB_NAME:-fapp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      FAPP_DB_HOST: postgres
+      FAPP_DB_PORT: 5432
+      FAPP_DB_NAME: ${FAPP_DB_NAME:-fapp}
+      FAPP_DB_USER: ${FAPP_DB_USER:-fapp}
+      FAPP_DB_PASSWORD: ${FAPP_DB_PASSWORD:?FAPP_DB_PASSWORD must be set}
+      FAPP_SERVER_PORT: 8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      FAPP_BACKEND_URL: http://backend:8080
+    ports:
+      # Terminate TLS in front of this. Credentials travel as HTTP Basic.
+      - "${FAPP_HTTP_PORT:-8081}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  fapp-postgres-data:

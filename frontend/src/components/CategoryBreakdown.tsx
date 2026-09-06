@@ -14,8 +14,10 @@ import { label, money, share } from '../format'
 export function CategoryBreakdown({ state }: { state: AsyncState<CategorySummary[]> }) {
   return (
     <section className="panel">
-      <h2>By category</h2>
-      <Async state={state} empty="No categorised spending in this period.">
+      <div className="panel-head">
+        <h2>By category</h2>
+      </div>
+      <Async state={state} empty="No categorised spending in this period." lines={5}>
         {(categories) => {
           const largest = Math.max(...categories.map((c) => Math.max(c.expenditure, c.income)))
           return (
