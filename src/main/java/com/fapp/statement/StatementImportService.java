@@ -2,6 +2,7 @@ package com.fapp.statement;
 
 import com.fapp.account.Account;
 import com.fapp.transaction.Transaction;
+import com.fapp.transaction.TransferDetectionService;
 import com.fapp.transaction.TransactionFingerprint;
 import com.fapp.transaction.TransactionRepository;
 import jakarta.persistence.EntityManager;
@@ -52,15 +53,18 @@ public class StatementImportService {
     private final Map<String, StatementAdapter> adaptersByProvider;
     private final StatementImportRepository statementImports;
     private final TransactionRepository transactions;
+    private final TransferDetectionService transferDetection;
     private final EntityManager entityManager;
 
     public StatementImportService(List<StatementAdapter> adapters,
                                   StatementImportRepository statementImports,
                                   TransactionRepository transactions,
+                                  TransferDetectionService transferDetection,
                                   EntityManager entityManager) {
         this.adaptersByProvider = index(adapters);
         this.statementImports = statementImports;
         this.transactions = transactions;
+        this.transferDetection = transferDetection;
         this.entityManager = entityManager;
     }
 
@@ -225,10 +229,24 @@ public class StatementImportService {
     private StatementImport persist(Account account, StatementImport statementImport, List<NewRow> newRows) {
         try {
             entityManager.persist(statementImport);
+            List<Transaction> stored = new ArrayList<>(newRows.size());
             for (NewRow row : newRows) {
-                entityManager.persist(transactionOf(account, statementImport, row));
+                Transaction transaction = transactionOf(account, statementImport, row);
+                entityManager.persist(transaction);
+                stored.add(transaction);
             }
             entityManager.flush();
+
+            /*
+             * Now that these rows exist, some of them may complete a movement between
+             * two of the user's own accounts whose other half was imported earlier --
+             * one statement covers one account, so the two legs can never arrive
+             * together. Detected here, inside the same transaction, so an import either
+             * lands with its transfers recognised or does not land at all.
+             */
+            transferDetection.detect(stored);
+            entityManager.flush();
+
             return statementImport;
         } catch (DataIntegrityViolationException | PersistenceException e) {
             throw new StatementImportException(
