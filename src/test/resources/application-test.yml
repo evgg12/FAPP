@@ -1,9 +1,8 @@
-# Test configuration.
+# Configuration for the web-slice tests only.
 #
-# The persistence layer is excluded here because there are no entities, no domain
-# tables and no test database yet: these tests cover application wiring and the
-# HTTP layer only. Migrations and repositories get real coverage when
-# Testcontainers-backed integration tests are introduced (Phase 8).
+# Persistence is excluded so a controller test does not need a database. Nothing that
+# depends on the persistence layer can load under this profile, so any test of the real
+# application context uses AbstractPostgresTest and a real PostgreSQL instead.
 spring:
   autoconfigure:
     exclude:
