@@ -63,8 +63,13 @@ a `Money` value object map onto that schema. Tests cover the domain rules as uni
 verify the migration, the database constraints and the JPA mappings against real
 PostgreSQL via Testcontainers, which `./mvnw test` therefore requires Docker for.
 
-There are no repositories yet — no query requirement exists — and no adapters, no
-analytics, no savings goals, no security and no frontend. Next up is Phase 2: the bank
-adapter concept plus Bank of Scotland and Monzo statement import, which is what will
-populate `fingerprint`, `occurrence` and `statement_imports` and give the transfer
-detection logic a caller.
+Phase 2 has started with the import boundary only: `StatementAdapter`, the in-memory
+`RawTransaction`, `ParsedStatement` and `StatementParseException` in `com.fapp.statement`.
+Bank-specific logic has exactly one place to live and nothing downstream of an adapter
+refers to a provider.
+
+There are no adapter implementations yet, no CSV parsing, no adapter registry, no
+repositories — no query requirement exists — and no analytics, savings goals, security
+or frontend. Next up is Bank of Scotland and Monzo statement parsing, then the
+normalisation, validation and deduplication that populate `fingerprint`, `occurrence`
+and `statement_imports` and give transfer detection a caller.
