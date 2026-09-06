@@ -21,4 +21,10 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     Optional<Account> findByIdWithUser(@Param("id") UUID id);
 
     List<Account> findByUser_IdOrderByProviderAscDisplayNameAsc(UUID userId);
+
+    /**
+     * How many accounts the user holds. Transfer detection asks first: with fewer than
+     * two there is nowhere to transfer to, so there is nothing to search for.
+     */
+    long countByUser_Id(UUID userId);
 }

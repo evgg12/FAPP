@@ -1,6 +1,7 @@
 package com.fapp.analytics;
 
 import com.fapp.account.Account;
+import com.fapp.persistence.SeededDomainTest;
 import com.fapp.transaction.Category;
 import com.fapp.transaction.Transaction;
 import com.fapp.user.User;
@@ -43,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  *
  * The 2026-09-01 row sits exactly on the exclusive end and must not appear in any of it.
  */
-class AnalyticsServiceTest extends AnalyticsTestSupport {
+class AnalyticsServiceTest extends SeededDomainTest {
 
     private static final AnalyticsPeriod AUGUST = period("2026-08-01", "2026-09-01");
     private static final AnalyticsPeriod SEPTEMBER = period("2026-09-01", "2026-10-01");

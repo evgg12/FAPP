@@ -1,9 +1,8 @@
-package com.fapp.analytics;
+package com.fapp.persistence;
 
 import com.fapp.account.Account;
 import com.fapp.account.AccountType;
 import com.fapp.money.Money;
-import com.fapp.persistence.AbstractPostgresTest;
 import com.fapp.statement.StatementImport;
 import com.fapp.statement.StatementPeriod;
 import com.fapp.transaction.Category;
@@ -23,14 +22,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Seeds exact transactions so every expected figure in an analytics test can be worked
- * out by hand.
+ * Seeds exact users, accounts and transactions against real PostgreSQL, so a test can
+ * state the transactions it needs and work out the expected result by hand.
  *
- * <p>Deliberately does not go through the import pipeline. Analytics is being tested
- * here, not parsing, and a test whose inputs come from a CSV makes the arithmetic
- * harder to check than the code it is checking.
+ * <p>Deliberately does not go through the import pipeline. A test whose inputs come from
+ * a CSV makes the arithmetic harder to check than the code it is checking. Shared by the
+ * analytics and transfer-detection tests, both of which need exact transactions rather
+ * than realistic ones.
  */
-abstract class AnalyticsTestSupport extends AbstractPostgresTest {
+public abstract class SeededDomainTest extends AbstractPostgresTest {
 
     protected static final Currency GBP = Currency.getInstance("GBP");
 
@@ -41,7 +41,7 @@ abstract class AnalyticsTestSupport extends AbstractPostgresTest {
     protected EntityManager entityManager;
 
     @Autowired
-    private JdbcTemplate jdbc;
+    protected JdbcTemplate jdbc;
 
     private int sequence;
 
@@ -58,7 +58,11 @@ abstract class AnalyticsTestSupport extends AbstractPostgresTest {
     }
 
     protected Account account(User owner, String provider, String displayName) {
-        Account account = Account.of(owner, provider, displayName, AccountType.CURRENT, GBP);
+        return account(owner, provider, displayName, GBP);
+    }
+
+    protected Account account(User owner, String provider, String displayName, Currency currency) {
+        Account account = Account.of(owner, provider, displayName, AccountType.CURRENT, currency);
         inTransaction(em -> em.persist(account));
         return account;
     }
@@ -83,7 +87,7 @@ abstract class AnalyticsTestSupport extends AbstractPostgresTest {
                         .account(account)
                         .statementImport(statementImport)
                         .bookingDate(row.date())
-                        .amount(Money.of(row.amount(), "GBP"))
+                        .amount(Money.of(row.amount(), account.currency().getCurrencyCode()))
                         .description(row.description())
                         .merchant(row.description())
                         .category(row.category(), row.categorySource())
