@@ -17,9 +17,11 @@ import { day } from '../format'
 export function StatementUpload({
   accountId,
   onImported,
+  onBack,
 }: {
   accountId: string
   onImported: () => void
+  onBack: () => void
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -53,6 +55,10 @@ export function StatementUpload({
     <section className="panel">
       <div className="panel-head">
         <h2>Import a statement</h2>
+        {/* Clears the selection, so another account can be chosen instead. */}
+        <button type="button" className="btn-quiet" onClick={onBack}>
+          Back
+        </button>
       </div>
       <form onSubmit={upload} className="form-grid">
         <input

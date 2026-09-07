@@ -4,6 +4,8 @@ import com.fapp.security.CurrentUser;
 import com.fapp.statement.StatementImport;
 import com.fapp.statement.StatementImportRepository;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,5 +38,30 @@ class StatementImportController {
             throw new NotFoundException("IMPORT_NOT_FOUND", "no statement import with id " + importId);
         }
         return StatementImportResponse.of(statementImport);
+    }
+
+    /**
+     * Removes one imported statement and every transaction it produced — the foreign key
+     * from {@code transactions} cascades, so the month goes as a unit.
+     *
+     * <p>Deliberately makes the same file importable again: duplicate detection is by
+     * content hash per account and by fingerprint per transaction, and deleting the
+     * import removes both records, so re-uploading the month behaves exactly like a
+     * first import rather than being rejected as already held.
+     */
+    @DeleteMapping("/{importId}")
+    ResponseEntity<Void> delete(@PathVariable UUID importId) {
+        statementImports.delete(owned(importId));
+        return ResponseEntity.noContent().build();
+    }
+
+    private StatementImport owned(UUID importId) {
+        StatementImport statementImport = statementImports.findByIdWithAccount(importId)
+                .orElseThrow(() -> new NotFoundException(
+                        "IMPORT_NOT_FOUND", "no statement import with id " + importId));
+        if (!statementImport.userId().equals(currentUser.requireId())) {
+            throw new NotFoundException("IMPORT_NOT_FOUND", "no statement import with id " + importId);
+        }
+        return statementImport;
     }
 }

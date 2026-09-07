@@ -133,3 +133,17 @@ export function yearsWithData(
   years.add(new Date().getUTCFullYear())
   return [...years].sort((a, b) => b - a)
 }
+
+/** The twelve months ending with the current one. */
+export function twelveMonthRange(): { from: string; to: string } {
+  const now = new Date()
+  return {
+    from: isoDay(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1))),
+    to: isoDay(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))),
+  }
+}
+
+/** `2026-08` as `A`, for an axis that has room for one letter per month. */
+export function monthInitial(yearMonth: string): string {
+  return MONTH_NAMES[Number(yearMonth.slice(5, 7)) - 1].charAt(0)
+}

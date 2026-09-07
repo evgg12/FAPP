@@ -62,10 +62,24 @@ public class AnalyticsService {
                 .stream()
                 .map(totals -> CategorySummary.of(
                         Category.valueOf(totals.getCategory()),
+                        totals.getCustomCategory(),
                         totals.getIncome(),
                         totals.getExpenditure(),
                         totals.getTransactionCount()))
                 .toList();
+    }
+
+    /**
+     * What sits in the savings pot for this period: paid in, taken back out, and the
+     * difference. Savings movements are deliberately absent from
+     * {@link #summariseByCategory} so they are reported here and nowhere else.
+     */
+    public SavingsPot summarisePot(AnalyticsScope scope, AnalyticsPeriod period) {
+        require(scope);
+        AnalyticsRepository.PotTotals totals =
+                analytics.summarisePot(scope.userId(), scope.accountId(), period.from(), period.to());
+        return SavingsPot.of(period, totals.getPaidIn(), totals.getWithdrawn(),
+                totals.getTransactionCount());
     }
 
     /**

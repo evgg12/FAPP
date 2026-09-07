@@ -64,6 +64,8 @@ public class Transaction {
 
     private static final Pattern SHA_256_HEX = Pattern.compile("^[0-9a-f]{64}$");
     private static final int DESCRIPTION_MAX = 500;
+    private static final int CUSTOM_CATEGORY_MAX = 40;
+
     private static final int MERCHANT_MAX = 200;
     private static final int EXTERNAL_ID_MAX = 120;
 
@@ -138,6 +140,10 @@ public class Transaction {
     @Column(name = "category", nullable = false, length = 30)
     private Category category;
 
+    /** Set only when the category is {@link Category#CUSTOM}; the database enforces it. */
+    @Column(name = "custom_category", length = CUSTOM_CATEGORY_MAX)
+    private String customCategory;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "category_source", nullable = false, length = 20)
     private CategorySource categorySource;
@@ -200,7 +206,26 @@ public class Transaction {
      * reported by a bank.
      */
     public void recategorise(Category category, CategorySource categorySource) {
-        this.category = Objects.requireNonNull(category, "category must not be null");
+        Objects.requireNonNull(category, "category must not be null");
+        if (category == Category.CUSTOM) {
+            throw new IllegalArgumentException("CUSTOM needs a label; use recategoriseAs");
+        }
+        this.category = category;
+        this.customCategory = null;
+        this.categorySource = Objects.requireNonNull(categorySource, "categorySource must not be null");
+    }
+
+    /**
+     * Files this transaction under a name the user chose. The label is theirs, so it is
+     * trimmed and length-checked but not interpreted.
+     */
+    public void recategoriseAs(String customCategory, CategorySource categorySource) {
+        String label = optionalText(customCategory, "customCategory", CUSTOM_CATEGORY_MAX);
+        if (label == null) {
+            throw new IllegalArgumentException("customCategory must not be blank");
+        }
+        this.category = Category.CUSTOM;
+        this.customCategory = label;
         this.categorySource = Objects.requireNonNull(categorySource, "categorySource must not be null");
     }
 
@@ -259,6 +284,11 @@ public class Transaction {
 
     public Category category() {
         return category;
+    }
+
+    /** The user's own label, present only when the category is {@link Category#CUSTOM}. */
+    public java.util.Optional<String> customCategory() {
+        return java.util.Optional.ofNullable(customCategory);
     }
 
     public CategorySource categorySource() {

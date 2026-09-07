@@ -138,7 +138,7 @@ class StatementImportServiceTest extends AbstractPostgresTest {
                 assertThat(transaction.categorySource()).isEqualTo(CategorySource.ADAPTER));
         assertThat(byExternalId("tx_sample000000000000002").category()).isEqualTo(Category.GROCERIES);
         assertThat(byExternalId("tx_sample000000000000008").category()).isEqualTo(Category.INCOME);
-        assertThat(byExternalId("tx_sample000000000000010").category()).isEqualTo(Category.TRANSFER);
+        assertThat(byExternalId("tx_sample000000000000010").category()).isEqualTo(Category.SAVINGS);
         assertThat(byExternalId("tx_sample000000000000013").category()).isEqualTo(Category.UNCATEGORISED);
     }
 

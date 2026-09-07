@@ -21,7 +21,23 @@ export type Category =
   | 'INCOME'
   | 'TRANSFER'
   | 'SAVINGS'
+  | 'CUSTOM'
   | 'UNCATEGORISED'
+
+/** Every category the API accepts, in the order the dropdown offers them. */
+export const CATEGORIES: Category[] = [
+  'GROCERIES',
+  'RESTAURANTS',
+  'TRANSPORT',
+  'SUBSCRIPTIONS',
+  'BILLS',
+  'SHOPPING',
+  'ENTERTAINMENT',
+  'INCOME',
+  'TRANSFER',
+  'SAVINGS',
+  'UNCATEGORISED',
+]
 
 export type CategorySource = 'USER' | 'RULE' | 'ADAPTER' | 'DEFAULT'
 
@@ -77,6 +93,8 @@ export interface Transaction {
   description: string
   merchant?: string
   category: Category
+  /** The user's own label, present only when `category` is `CUSTOM`. */
+  customCategory?: string
   categorySource: CategorySource
   transactionType: TransactionType
   externalId?: string
@@ -99,6 +117,7 @@ export interface FinancialSummary {
 
 export interface CategorySummary {
   category: Category
+  customCategory?: string
   income: number
   expenditure: number
   net: number
@@ -169,3 +188,15 @@ export interface RecategorisationResult {
   recategorised: number
 }
 
+
+/**
+ * What moved into and out of the savings pot over the period. A movement, not a bank
+ * balance: FAPP holds statements, so it can only report what the statements show.
+ */
+export interface SavingsPot {
+  period: DateRange
+  paidIn: number
+  withdrawn: number
+  balance: number
+  transactionCount: number
+}

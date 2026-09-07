@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -222,6 +223,59 @@ class StatementImportApiTest extends ApiTestSupport {
     }
 
     // --- helpers ---
+
+    @Test
+    void listsTheStatementsLoadedIntoAnAccountWithTheirDetectedPeriods() throws Exception {
+        String accountId = monzoAccount();
+        mockMvc.perform(upload(accountId, fixture("/monzo/statement.csv")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/accounts/" + accountId + "/statements"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                // The dates come from the statement itself, not from when it was uploaded.
+                .andExpect(jsonPath("$[0].periodStart").value("2026-08-03"))
+                .andExpect(jsonPath("$[0].periodEnd").value("2026-08-29"))
+                .andExpect(jsonPath("$[0].importedCount").value(18));
+    }
+
+    @Test
+    void removesOneLoadedStatementAndLetsThatMonthBeUploadedAgain() throws Exception {
+        String accountId = monzoAccount();
+        MvcResult imported = mockMvc.perform(upload(accountId, fixture("/monzo/statement.csv")))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String importId = body(imported).get("id").asText();
+
+        mockMvc.perform(delete("/api/imports/" + importId))
+                .andExpect(status().isNoContent());
+
+        // The transactions went with it, by cascade.
+        mockMvc.perform(get("/api/accounts/" + accountId + "/transactions"))
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/imports/" + importId))
+                .andExpect(status().isNotFound());
+
+        // And the same file is a first import again, not a duplicate.
+        mockMvc.perform(upload(accountId, fixture("/monzo/statement.csv")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.importedCount").value(18))
+                .andExpect(jsonPath("$.duplicateCount").value(0));
+    }
+
+    @Test
+    void refusesToRemoveSomebodyElsesStatement() throws Exception {
+        String accountId = monzoAccount();
+        MvcResult imported = mockMvc.perform(upload(accountId, fixture("/monzo/statement.csv")))
+                .andReturn();
+        String importId = body(imported).get("id").asText();
+
+        createUser("not-their-statement@example.com");
+        authenticateAs("not-their-statement@example.com");
+        mockMvc.perform(delete("/api/imports/" + importId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("IMPORT_NOT_FOUND"));
+    }
 
     private String monzoAccount() throws Exception {
         return createAccount(createUser("monzo-" + UUID.randomUUID() + "@example.com"),

@@ -4,6 +4,7 @@ import com.fapp.account.Account;
 import com.fapp.account.AccountRepository;
 import com.fapp.security.CurrentUser;
 import com.fapp.statement.StatementImport;
+import com.fapp.statement.StatementImportRepository;
 import com.fapp.statement.StatementImportService;
 import com.fapp.transaction.Transaction;
 import com.fapp.transaction.TransactionRepository;
@@ -44,17 +45,20 @@ class AccountController {
     private final AccountRepository accounts;
     private final TransactionRepository transactions;
     private final StatementImportService statementImports;
+    private final StatementImportRepository imports;
     private final CurrentUser currentUser;
 
     AccountController(UserRepository users,
                       AccountRepository accounts,
                       TransactionRepository transactions,
                       StatementImportService statementImports,
+                      StatementImportRepository imports,
                       CurrentUser currentUser) {
         this.users = users;
         this.accounts = accounts;
         this.transactions = transactions;
         this.statementImports = statementImports;
+        this.imports = imports;
         this.currentUser = currentUser;
     }
 
@@ -130,6 +134,16 @@ class AccountController {
     ResponseEntity<Void> delete(@PathVariable UUID accountId) {
         accounts.delete(ownedAccount(accountId));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Which statements are loaded into this account, with the period each one covers as
+     * detected from the file itself. This is what makes a single month removable.
+     */
+    @GetMapping("/{accountId}/statements")
+    List<StatementImportResponse> statements(@PathVariable UUID accountId) {
+        ownedAccount(accountId);
+        return imports.findByAccount(accountId).stream().map(StatementImportResponse::of).toList();
     }
 
     @GetMapping("/{accountId}/transactions")

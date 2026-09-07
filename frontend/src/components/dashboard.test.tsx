@@ -12,6 +12,7 @@ import {
   yearsWithData,
 } from '../format'
 import { ManageAccounts } from './ManageAccounts'
+import { TransactionList } from './TransactionList'
 import { PeriodPicker } from './PeriodPicker'
 
 function loaded<T>(data: T): AsyncState<T> {
@@ -96,7 +97,7 @@ describe('progress formatting', () => {
   })
 })
 
-describe('removing an account', () => {
+describe('accounts and their statements', () => {
   const ACCOUNTS: AccountSummary[] = [
     {
       accountId: 'a1',
@@ -109,28 +110,99 @@ describe('removing an account', () => {
     },
   ]
 
-  it('asks before removing, and does nothing if the answer is no', async () => {
-    const fetching = vi.spyOn(globalThis, 'fetch')
+  const STATEMENTS = [
+    {
+      id: 'i1',
+      accountId: 'a1',
+      provider: 'monzo',
+      periodStart: '2026-08-03',
+      periodEnd: '2026-08-29',
+      rowCount: 18,
+      importedCount: 18,
+      duplicateCount: 0,
+      importedAt: '2026-09-01T10:00:00Z',
+    },
+  ]
+
+  function withStatements() {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
+      if ((init as RequestInit | undefined)?.method === 'DELETE') {
+        return Promise.resolve(new Response(null, { status: 204 }))
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(String(url).includes('/statements') ? STATEMENTS : []), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
+  }
+
+  it('lists the period each loaded statement covers', async () => {
+    withStatements()
+    await act(async () => {
+      render(
+        <ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={vi.fn()} onStatementRemoved={vi.fn()} />,
+      )
+    })
+
+    // The dates the statement itself reported, not when it was uploaded.
+    expect(screen.getByText(/03 Aug 2026 – 29 Aug 2026/)).toBeTruthy()
+  })
+
+  it('removes one statement without removing the account', async () => {
+    const fetching = withStatements()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onStatementRemoved = vi.fn()
+
+    await act(async () => {
+      render(
+        <ManageAccounts
+          accounts={loaded(ACCOUNTS)}
+          onRemoved={vi.fn()}
+          onStatementRemoved={onStatementRemoved}
+        />,
+      )
+    })
+    await act(async () => {
+      screen.getByRole('button', { name: 'Remove' }).click()
+    })
+
+    expect(fetching).toHaveBeenCalledWith('/api/imports/i1', expect.objectContaining({ method: 'DELETE' }))
+    expect(onStatementRemoved).toHaveBeenCalled()
+  })
+
+  it('asks before removing an account, and does nothing if the answer is no', async () => {
+    const fetching = withStatements()
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     const onRemoved = vi.fn()
 
-    render(<ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} />)
+    await act(async () => {
+      render(
+        <ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} onStatementRemoved={vi.fn()} />,
+      )
+    })
     await act(async () => {
       screen.getByRole('button', { name: 'Remove account' }).click()
     })
 
-    expect(fetching).not.toHaveBeenCalled()
+    expect(fetching).not.toHaveBeenCalledWith(
+      '/api/accounts/a1',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
     expect(onRemoved).not.toHaveBeenCalled()
   })
 
   it('deletes the account and tells its caller which one went', async () => {
-    const fetching = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(null, { status: 204 }))
+    const fetching = withStatements()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onRemoved = vi.fn()
 
-    render(<ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} />)
+    await act(async () => {
+      render(
+        <ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} onStatementRemoved={vi.fn()} />,
+      )
+    })
     await act(async () => {
       screen.getByRole('button', { name: 'Remove account' }).click()
     })
@@ -140,5 +212,77 @@ describe('removing an account', () => {
       expect.objectContaining({ method: 'DELETE' }),
     )
     expect(onRemoved).toHaveBeenCalledWith('a1')
+  })
+})
+
+describe('editing a category', () => {
+  const TRANSACTION = {
+    id: 't1',
+    bookingDate: '2026-08-03',
+    amount: -24.15,
+    currency: 'GBP',
+    description: 'GREENFIELD GROCERS 4821',
+    merchant: 'Greenfield Grocers',
+    category: 'GROCERIES' as const,
+    categorySource: 'ADAPTER' as const,
+    transactionType: 'CARD_PAYMENT' as const,
+  }
+
+  it('saves a different category straight from the list', async () => {
+    const fetching = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(TRANSACTION), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    const onCategoryChanged = vi.fn()
+
+    render(
+      <TransactionList
+        state={loaded([TRANSACTION])}
+        accountSelected
+        onCategoryChanged={onCategoryChanged}
+      />,
+    )
+    const select = screen.getByLabelText('Category for Greenfield Grocers')
+    await act(async () => {
+      fireEvent.change(select, { target: { value: 'RESTAURANTS' } })
+    })
+
+    expect(fetching).toHaveBeenCalledWith(
+      '/api/transactions/t1/category',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ category: 'RESTAURANTS' }) }),
+    )
+    expect(onCategoryChanged).toHaveBeenCalled()
+  })
+
+  it('asks for a name when the category is Custom, and sends it', async () => {
+    const fetching = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(TRANSACTION), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+
+    render(<TransactionList state={loaded([TRANSACTION])} accountSelected />)
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Category for Greenfield Grocers'), {
+        target: { value: 'CUSTOM' },
+      })
+    })
+    // Choosing Custom saves nothing until it has been named.
+    expect(fetching).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Custom category name'), { target: { value: 'Gym' } })
+    await act(async () => {
+      screen.getByRole('button', { name: 'Save' }).click()
+    })
+
+    expect(fetching).toHaveBeenCalledWith(
+      '/api/transactions/t1/category',
+      expect.objectContaining({
+        body: JSON.stringify({ category: 'CUSTOM', customCategory: 'Gym' }),
+      }),
+    )
   })
 })

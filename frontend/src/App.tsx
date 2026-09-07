@@ -8,6 +8,7 @@ import {
   latestMonthWithData,
   monthRange,
   scaleRange,
+  twelveMonthRange,
   yearsWithData,
 } from './format'
 import type { PeriodScale } from './format'
@@ -19,7 +20,8 @@ import { GoalsPanel } from './components/GoalsPanel'
 import { LargestExpenses } from './components/LargestExpenses'
 import { ManageAccounts } from './components/ManageAccounts'
 import { PeriodPicker } from './components/PeriodPicker'
-import { RecategorisePanel } from './components/RecategorisePanel'
+import { NetSavingsChart } from './components/NetSavingsChart'
+import { SavingsPotPanel } from './components/SavingsPotPanel'
 import { SignInScreen } from './components/SignInScreen'
 import { StatementUpload } from './components/StatementUpload'
 import { SummaryPanel } from './components/SummaryPanel'
@@ -62,6 +64,7 @@ export default function App() {
   const [range, setRange] = useState<DateRange>(() => scaleRange('month'))
   // Bumped after an import or a recategorisation so every panel reloads.
   const [dataVersion, setDataVersion] = useState(0)
+  const [creatingAccount, setCreatingAccount] = useState(false)
 
   // Credentials survive a reload within the tab, so the session is re-established
   // rather than making the user sign in again.
@@ -132,6 +135,15 @@ export default function App() {
     setMonth(latestMonth)
     setRange((current) => (scale === 'month' ? monthRange(latestMonth) : current))
   }, [latestMonth, scale])
+
+  const pot = useAsync(
+    ready ? () => api.savingsPot(userId!, range, accountId ?? undefined) : null,
+    analyticsKey,
+  )
+  const twelveMonths = useAsync(
+    userId ? () => api.monthly(userId, twelveMonthRange(), accountId ?? undefined) : null,
+    [userId, accountId, dataVersion],
+  )
 
   const transactions = useAsync(
     accountId ? () => api.transactions(accountId) : null,
@@ -257,6 +269,10 @@ export default function App() {
           <>
             <SummaryPanel state={summary} />
             <div className="grid grid-2">
+              <SavingsPotPanel state={pot} />
+              <NetSavingsChart state={twelveMonths} />
+            </div>
+            <div className="grid grid-2">
               <CategoryBreakdown state={categories} />
               <AccountBreakdown state={accounts} />
             </div>
@@ -265,25 +281,38 @@ export default function App() {
               state={transactions}
               accountSelected={accountId !== null}
               limit={8}
+              onCategoryChanged={() => setDataVersion((version) => version + 1)}
             />
           </>
         )}
 
         {view === 'transactions' && (
-          <TransactionList state={transactions} accountSelected={accountId !== null} />
+          <TransactionList
+            state={transactions}
+            accountSelected={accountId !== null}
+            onCategoryChanged={() => setDataVersion((version) => version + 1)}
+          />
         )}
 
         {view === 'goals' && <GoalsPanel userId={userId} />}
 
         {view === 'accounts' && (
           <>
-            <AccountForm
-              userId={userId}
-              onCreated={(createdId) => {
-                setAccountId(createdId)
-                setDataVersion((version) => version + 1)
-              }}
-            />
+            <div className="row row-tight">
+              <button type="button" onClick={() => setCreatingAccount(true)}>
+                Create account
+              </button>
+            </div>
+            {creatingAccount && (
+              <AccountForm
+                userId={userId}
+                onCreated={(createdId) => {
+                  setAccountId(createdId)
+                  setDataVersion((version) => version + 1)
+                }}
+                onClose={() => setCreatingAccount(false)}
+              />
+            )}
             <ManageAccounts
               accounts={accounts}
               onRemoved={(removedId) => {
@@ -292,11 +321,13 @@ export default function App() {
                 }
                 setDataVersion((version) => version + 1)
               }}
+              onStatementRemoved={() => setDataVersion((version) => version + 1)}
             />
             {accountId ? (
               <StatementUpload
                 accountId={accountId}
                 onImported={() => setDataVersion((version) => version + 1)}
+                onBack={() => setAccountId(null)}
               />
             ) : (
               <section className="panel">
@@ -313,12 +344,9 @@ export default function App() {
                 />
               </section>
             )}
-            <RecategorisePanel
-              userId={userId}
-              onDone={() => setDataVersion((version) => version + 1)}
-            />
           </>
         )}
+
       </main>
 
       <footer className="foot">

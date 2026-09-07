@@ -33,6 +33,7 @@ public record TransactionResponse(
         String description,
         String merchant,
         Category category,
+        String customCategory,
         CategorySource categorySource,
         TransactionType transactionType,
         String externalId) {
@@ -49,6 +50,7 @@ public record TransactionResponse(
                 transaction.description(),
                 transaction.merchant().orElse(null),
                 transaction.category(),
+                transaction.customCategory().orElse(null),
                 transaction.categorySource(),
                 transaction.transactionType(),
                 transaction.externalId().orElse(null));

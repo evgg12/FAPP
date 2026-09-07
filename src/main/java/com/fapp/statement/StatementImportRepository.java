@@ -17,6 +17,14 @@ public interface StatementImportRepository extends JpaRepository<StatementImport
     Optional<StatementImport> findByIdWithAccount(@Param("id") UUID id);
 
     /**
+     * Every statement imported into this account, earliest period first, so a caller can
+     * see which months are loaded and remove one.
+     */
+    @Query("select i from StatementImport i join fetch i.account where i.account.id = :accountId"
+            + " order by i.period.start asc, i.importedAt asc")
+    java.util.List<StatementImport> findByAccount(@Param("accountId") UUID accountId);
+
+    /**
      * Whether this exact file has already been imported into this account, matching
      * {@code uq_statement_imports_content} on {@code (account_id, content_hash)}. Asked
      * before parsing, so re-uploading a statement costs nothing.
