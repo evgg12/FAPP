@@ -272,13 +272,14 @@ public class MonzoStatementAdapter implements StatementAdapter {
     }
 
     /**
-     * A pot transfer is money moving between the user's own accounts whatever Monzo
-     * filed it under, so its type decides the category. Otherwise an unmapped Monzo
+     * A pot transfer is money moving into or out of the user's own savings pot whatever
+     * Monzo filed it under, so its type decides the category: SAVINGS, which analytics
+     * reports as a pot balance and keeps out of the spending breakdown. Otherwise an unmapped Monzo
      * category becomes {@code UNCATEGORISED} rather than a guess.
      */
     private static Category category(String monzoCategory, String monzoType) {
         if (monzoType != null && POT_TRANSFER.equals(monzoType.toLowerCase(Locale.ROOT))) {
-            return Category.TRANSFER;
+            return Category.SAVINGS;
         }
         if (monzoCategory == null) {
             return Category.UNCATEGORISED;

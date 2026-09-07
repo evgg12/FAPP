@@ -25,6 +25,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     List<Transaction> findByUserIdAndCategory(UUID userId, Category category);
 
     /**
+     * A user's transactions sharing one description, whatever account they sit in.
+     *
+     * <p>Case-insensitive because the same payee can be written differently by two
+     * banks. Used when a category set by hand is applied to every other movement with
+     * the same name, which is what saves categorising a recurring payee row by row.
+     */
+    @Query("select t from Transaction t where t.userId = :userId"
+            + " and lower(t.description) = lower(:description)")
+    List<Transaction> findByUserIdAndDescription(@Param("userId") UUID userId,
+                                                 @Param("description") String description);
+
+    /**
      * An account's transactions, oldest first, for reading back what was imported.
      * Ordered by the analytical date and then by insertion so that repeats of the same
      * day come back in a stable order.

@@ -8,6 +8,7 @@ import com.fapp.analytics.CategorySummary;
 import com.fapp.analytics.FinancialSummary;
 import com.fapp.analytics.LargestExpense;
 import com.fapp.analytics.MonthlySummary;
+import com.fapp.analytics.SavingsPot;
 import com.fapp.analytics.PeriodComparison;
 import java.time.LocalDate;
 import java.util.List;
@@ -62,6 +63,15 @@ class AnalyticsController {
     }
 
     /** Month by month across the requested window, including quiet months. */
+    /** The savings pot on its own, since it is excluded from the category breakdown. */
+    @GetMapping("/savings-pot")
+    SavingsPot savingsPot(@PathVariable UUID userId,
+                          @RequestParam LocalDate from,
+                          @RequestParam LocalDate to,
+                          @RequestParam(required = false) UUID accountId) {
+        return analytics.summarisePot(AnalyticsScope.of(userId, accountId), new AnalyticsPeriod(from, to));
+    }
+
     @GetMapping("/monthly")
     List<MonthlySummary> monthly(@PathVariable UUID userId,
                                  @RequestParam(required = false) UUID accountId,

@@ -73,6 +73,7 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
 
     @Query(nativeQuery = true, value = """
             SELECT t.category AS "category",
+                   t.custom_category AS "customCategory",
                    CAST(COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount END), 0) AS numeric(19,4)) AS "income",
                    CAST(COALESCE(SUM(CASE WHEN t.amount < 0 THEN -t.amount END), 0) AS numeric(19,4)) AS "expenditure",
                    COUNT(*) AS "transactionCount"
@@ -83,8 +84,9 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
               AND t.booking_date < :to
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.outgoing_transaction_id = t.id)
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.incoming_transaction_id = t.id)
-            GROUP BY t.category
-            ORDER BY 3 DESC, 2 DESC, 1 ASC
+              AND t.category <> 'SAVINGS'
+            GROUP BY t.category, t.custom_category
+            ORDER BY 4 DESC, 3 DESC, 1 ASC
             """)
     List<CategoryTotals> summariseByCategory(@Param("userId") UUID userId,
                                              @Param("accountId") UUID accountId,
@@ -170,6 +172,34 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
                                          @Param("to") LocalDate to,
                                          @Param("limit") int limit);
 
+    /**
+     * The savings pot: what has been moved into it and what has been taken back out.
+     *
+     * <p>Only {@code SAVINGS} rows count, which is what a pot transfer is categorised as
+     * on import. Money going into a pot leaves the account it came from, so it is stored
+     * negative; the balance is therefore what went in less what came out, and the
+     * caller does that subtraction on these two figures rather than on a signed sum.
+     *
+     * <p>No transfer exclusion here. A pot movement appears once in a statement, and
+     * excluding it as an internal transfer is exactly what would make a pot balance
+     * always read zero.
+     */
+    @Query(nativeQuery = true, value = """
+            SELECT CAST(COALESCE(SUM(CASE WHEN t.amount < 0 THEN -t.amount END), 0) AS numeric(19,4)) AS "paidIn",
+                   CAST(COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount END), 0) AS numeric(19,4)) AS "withdrawn",
+                   COUNT(*) AS "transactionCount"
+            FROM transactions t
+            WHERE t.user_id = :userId
+              AND (:accountId IS NULL OR t.account_id = :accountId)
+              AND t.booking_date >= :from
+              AND t.booking_date < :to
+              AND t.category = 'SAVINGS'
+            """)
+    PotTotals summarisePot(@Param("userId") UUID userId,
+                           @Param("accountId") UUID accountId,
+                           @Param("from") LocalDate from,
+                           @Param("to") LocalDate to);
+
     /** Money in, money out and how many movements produced them. */
     interface Totals {
         BigDecimal getIncome();
@@ -181,6 +211,16 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
 
     interface CategoryTotals extends Totals {
         String getCategory();
+
+        String getCustomCategory();
+    }
+
+    interface PotTotals {
+        BigDecimal getPaidIn();
+
+        BigDecimal getWithdrawn();
+
+        long getTransactionCount();
     }
 
     interface MonthTotals extends Totals {

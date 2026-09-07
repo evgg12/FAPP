@@ -1,5 +1,8 @@
-import type { Transaction } from '../api/types'
-import { Async } from './Async'
+import { useState } from 'react'
+import { ApiError, api } from '../api/client'
+import type { Category, Transaction } from '../api/types'
+import { CATEGORIES } from '../api/types'
+import { Async, ErrorNotice } from './Async'
 import type { AsyncState } from '../hooks/useAsync'
 import { day, label, money } from '../format'
 
@@ -18,10 +21,12 @@ export function TransactionList({
   state,
   accountSelected,
   limit,
+  onCategoryChanged,
 }: {
   state: AsyncState<Transaction[]>
   accountSelected: boolean
   limit?: number
+  onCategoryChanged?: () => void
 }) {
   return (
     <section className="panel">
@@ -66,7 +71,12 @@ export function TransactionList({
                               </span>
                             )}
                           </td>
-                          <td data-label="Category">{label(transaction.category)}</td>
+                          <td data-label="Category">
+                            <CategoryCell
+                              transaction={transaction}
+                              onChanged={onCategoryChanged}
+                            />
+                          </td>
                           <td data-label="Type">{label(transaction.transactionType)}</td>
                           <td
                             data-label="Amount"
@@ -90,5 +100,89 @@ export function TransactionList({
         </Async>
       )}
     </section>
+  )
+}
+
+/**
+ * The category, editable where it is shown.
+ *
+ * A native select is used deliberately: it is the one control that a phone renders as a
+ * full-screen picker and a desktop as a dropdown, with no custom touch handling to get
+ * wrong. Choosing "Custom…" reveals a name field, and the change is saved through the
+ * API — the category is the only field a user is allowed to change, and it is recorded
+ * as their choice so a later import's rules will not overwrite it.
+ */
+function CategoryCell({
+  transaction,
+  onChanged,
+}: {
+  transaction: Transaction
+  onChanged?: () => void
+}) {
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState(transaction.customCategory ?? '')
+  const [error, setError] = useState<ApiError | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function save(category: Category, customCategory?: string) {
+    setError(null)
+    setBusy(true)
+    try {
+      await api.setCategory(transaction.id, category, customCategory)
+      setNaming(false)
+      onChanged?.()
+    } catch (caught) {
+      setError(caught as ApiError)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <span className="category-cell">
+      <select
+        className="category-select"
+        value={transaction.category}
+        disabled={busy}
+        aria-label={`Category for ${transaction.merchant ?? transaction.description}`}
+        onChange={(event) => {
+          const chosen = event.target.value as Category
+          if (chosen === 'CUSTOM') {
+            setNaming(true)
+          } else {
+            void save(chosen)
+          }
+        }}
+      >
+        {CATEGORIES.map((category) => (
+          <option key={category} value={category}>
+            {label(category)}
+          </option>
+        ))}
+        <option value="CUSTOM">
+          {transaction.customCategory ? transaction.customCategory : 'Custom…'}
+        </option>
+      </select>
+      {naming && (
+        <span className="row row-tight">
+          <input
+            value={name}
+            maxLength={40}
+            placeholder="Category name"
+            aria-label="Custom category name"
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button
+            type="button"
+            className="btn-quiet"
+            disabled={busy || name.trim() === ''}
+            onClick={() => void save('CUSTOM', name.trim())}
+          >
+            Save
+          </button>
+        </span>
+      )}
+      {error && <ErrorNotice error={error} />}
+    </span>
   )
 }

@@ -888,3 +888,88 @@ th {
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
+
+/* ---------- Modal ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(20, 23, 28, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--s3);
+  overflow-y: auto;
+}
+
+/* Sheet from the bottom on a phone, centred card once there is room. */
+@media (min-width: 620px) {
+  .modal {
+    align-items: center;
+    padding: var(--s5);
+  }
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 30rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ---------- Compact chart ---------- */
+
+.chart-compact {
+  max-height: 7rem;
+}
+
+/* ---------- Loaded statements ---------- */
+
+.statements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.statements li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  font-size: 0.9rem;
+  background: var(--sunken);
+  border-radius: var(--radius-sm);
+  padding: var(--s2) var(--s3);
+}
+
+/* ---------- Editable category ---------- */
+
+.category-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+/* Quiet until touched, so a table of them does not read as a form. */
+.category-select {
+  min-height: 2.25rem;
+  padding: 2px var(--s2);
+  font-size: 0.9rem;
+  border-color: transparent;
+  background: var(--sunken);
+  max-width: 11rem;
+}
+
+@media (max-width: 699px) {
+  /* In card mode the cell sits on the right of its label and needs the room. */
+  .category-select {
+    min-height: var(--touch);
+    max-width: 60%;
+  }
+}

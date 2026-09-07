@@ -40,6 +40,24 @@ class AnalyticsApiTest extends ApiTestSupport {
     }
 
     @Test
+    void reportsTheSavingsPotOnItsOwnAndKeepsItOutOfTheCategoryBreakdown() throws Exception {
+        // The fixture moves 200.00 into a pot on the 19th and takes 75.00 back on the 29th.
+        mockMvc.perform(get(analytics("savings-pot")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paidIn").value(200.00))
+                .andExpect(jsonPath("$.withdrawn").value(75.00))
+                .andExpect(jsonPath("$.balance").value(125.00))
+                .andExpect(jsonPath("$.transactionCount").value(2));
+
+        MvcResult categories = mockMvc.perform(get(analytics("categories")))
+                .andExpect(status().isOk())
+                .andReturn();
+        for (JsonNode category : body(categories)) {
+            assertThat(category.get("category").asText()).isNotEqualTo("SAVINGS");
+        }
+    }
+
+    @Test
     void reportsASummaryThatAgreesWithWhatWasImported() throws Exception {
         MvcResult result = mockMvc.perform(get(analytics("summary")))
                 .andExpect(status().isOk())
@@ -72,8 +90,16 @@ class AnalyticsApiTest extends ApiTestSupport {
             expenditure = expenditure.add(category.get("expenditure").decimalValue());
             income = income.add(category.get("income").decimalValue());
         }
-        assertThat(expenditure).isEqualByComparingTo(summary.get("expenditure").decimalValue());
-        assertThat(income).isEqualByComparingTo(summary.get("income").decimalValue());
+        /*
+         * The breakdown covers everything except the savings pot, which is reported on
+         * its own endpoint. Adding the pot back is what still proves nothing is lost:
+         * every penny is in exactly one of the two.
+         */
+        JsonNode pot = body(mockMvc.perform(get(analytics("savings-pot"))).andReturn());
+        assertThat(expenditure.add(pot.get("paidIn").decimalValue()))
+                .isEqualByComparingTo(summary.get("expenditure").decimalValue());
+        assertThat(income.add(pot.get("withdrawn").decimalValue()))
+                .isEqualByComparingTo(summary.get("income").decimalValue());
     }
 
     @Test

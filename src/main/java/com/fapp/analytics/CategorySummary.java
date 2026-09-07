@@ -15,16 +15,18 @@ import java.math.BigDecimal;
  */
 public record CategorySummary(
         Category category,
+        String customCategory,
         BigDecimal income,
         BigDecimal expenditure,
         BigDecimal net,
         long transactionCount) {
 
     static CategorySummary of(Category category,
+                              String customCategory,
                               BigDecimal income,
                               BigDecimal expenditure,
                               long transactionCount) {
-        return new CategorySummary(category, income, expenditure,
+        return new CategorySummary(category, customCategory, income, expenditure,
                 income.subtract(expenditure), transactionCount);
     }
 }

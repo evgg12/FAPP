@@ -1,15 +1,16 @@
 import type {
   Account,
   AccountSummary,
-  RecategorisationResult,
-  SavingsGoal,
   AccountType,
+  Category,
   ApiErrorBody,
   CategorySummary,
   DateRange,
   FinancialSummary,
   LargestExpense,
   MonthlySummary,
+  SavingsGoal,
+  SavingsPot,
   StatementImport,
   Transaction,
   User,
@@ -243,11 +244,36 @@ export const api = {
     return request<void>(`/api/users/${userId}/goals/${goalId}`, { method: 'DELETE' })
   },
 
-  /** Reapplies today's merchant rules to transactions imported before them. */
-  recategorise(userId: string): Promise<RecategorisationResult> {
-    return request<RecategorisationResult>(
-      `/api/users/${userId}/transactions/recategorise`,
-      { method: 'POST' },
+  /** The statements loaded into an account, with the period each one covers. */
+  statements(accountId: string): Promise<StatementImport[]> {
+    return request<StatementImport[]>(`/api/accounts/${accountId}/statements`)
+  },
+
+  /** Removes one imported statement and the transactions it produced. */
+  deleteStatement(importId: string): Promise<void> {
+    return request<void>(`/api/imports/${importId}`, { method: 'DELETE' })
+  },
+
+  /** Files one transaction under a different category, or one the user named. */
+  setCategory(
+    transactionId: string,
+    category: Category,
+    customCategory?: string,
+  ): Promise<Transaction> {
+    return request<Transaction>(`/api/transactions/${transactionId}/category`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category, customCategory }),
+    })
+  },
+
+  savingsPot(
+    userId: string,
+    range: DateRange,
+    accountId?: string,
+  ): Promise<SavingsPot> {
+    return request<SavingsPot>(
+      `/api/users/${userId}/analytics/savings-pot?${analyticsQuery(range, accountId)}`,
     )
   },
 

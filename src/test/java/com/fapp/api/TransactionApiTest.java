@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -125,6 +126,132 @@ class TransactionApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.length()").value(18));
         mockMvc.perform(get("/api/accounts/" + bos + "/transactions"))
                 .andExpect(jsonPath("$.length()").value(10));
+    }
+
+    @Test
+    void letsTheUserFileATransactionUnderADifferentCategory() throws Exception {
+        String transactionId = aTransactionId();
+
+        mockMvc.perform(patch("/api/transactions/" + transactionId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "RESTAURANTS"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("RESTAURANTS"))
+                // Marked as the user's choice, which is what stops a rule overwriting it.
+                .andExpect(jsonPath("$.categorySource").value("USER"));
+
+        assertThat(jdbc().queryForObject(
+                "SELECT category FROM transactions WHERE id = ?::uuid", String.class, transactionId))
+                .isEqualTo("RESTAURANTS");
+    }
+
+    @Test
+    void acceptsACategoryTheUserNamedThemselves() throws Exception {
+        String transactionId = aTransactionId();
+
+        mockMvc.perform(patch("/api/transactions/" + transactionId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "CUSTOM", "customCategory": "  Gym  "}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("CUSTOM"))
+                .andExpect(jsonPath("$.customCategory").value("Gym"));
+
+        assertThat(jdbc().queryForObject(
+                "SELECT custom_category FROM transactions WHERE id = ?::uuid", String.class, transactionId))
+                .isEqualTo("Gym");
+    }
+
+    @Test
+    void rejectsACustomCategoryWithNoNameAndForgetsAnOldName() throws Exception {
+        String transactionId = aTransactionId();
+
+        mockMvc.perform(patch("/api/transactions/" + transactionId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "CUSTOM"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        // Moving back to a fixed category must clear the label, or the database refuses it.
+        mockMvc.perform(patch("/api/transactions/" + transactionId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "CUSTOM", "customCategory": "Gym"}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/transactions/" + transactionId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "BILLS"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customCategory").doesNotExist());
+    }
+
+    @Test
+    void refusesToRecategoriseSomebodyElsesTransaction() throws Exception {
+        String transactionId = aTransactionId();
+
+        createUser("not-their-transaction@example.com");
+        authenticateAs("not-their-transaction@example.com");
+        mockMvc.perform(patch("/api/transactions/" + transactionId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "BILLS"}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"));
+    }
+
+    @Test
+    void appliesAHandSetCategoryToEveryMovementWithTheSameName() throws Exception {
+        // The Bank of Scotland fixture repeats a payee, which is the case this exists for.
+        String accountId = createAccount(createUser("same-name@example.com"), "bank_of_scotland", "BoS");
+        mockMvc.perform(multipart("/api/accounts/" + accountId + "/statements")
+                        .file(new MockMultipartFile("file", "s.csv", "text/csv",
+                                fixture("/bankofscotland/statement.csv"))))
+                .andExpect(status().isCreated());
+
+        MvcResult all = mockMvc.perform(get("/api/accounts/" + accountId + "/transactions")).andReturn();
+        JsonNode transactions = body(all);
+        String description = null;
+        for (JsonNode candidate : transactions) {
+            String text = candidate.get("description").asText();
+            int seen = 0;
+            for (JsonNode other : transactions) {
+                if (other.get("description").asText().equals(text)) {
+                    seen++;
+                }
+            }
+            if (seen > 1) {
+                description = text;
+                break;
+            }
+        }
+        assertThat(description).as("the fixture must repeat a payee").isNotNull();
+        String oneId = find(transactions, description).get("id").asText();
+
+        mockMvc.perform(patch("/api/transactions/" + oneId + "/category")
+                        .contentType("application/json")
+                        .content("""
+                                {"category": "SHOPPING"}
+                                """))
+                .andExpect(status().isOk());
+
+        Integer stillOther = jdbc().queryForObject(
+                "SELECT count(*) FROM transactions WHERE lower(description) = lower(?) AND category <> 'SHOPPING'",
+                Integer.class, description);
+        assertThat(stillOther).isZero();
+    }
+
+    private String aTransactionId() throws Exception {
+        String accountId = importedMonzoAccount();
+        MvcResult result = mockMvc.perform(get("/api/accounts/" + accountId + "/transactions")).andReturn();
+        return find(body(result), "GREENFIELD GROCERS 4821").get("id").asText();
     }
 
     private String importedMonzoAccount() throws Exception {

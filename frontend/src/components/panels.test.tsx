@@ -116,7 +116,10 @@ describe('transaction list', () => {
 
     expect(screen.getByText('Greenfield Grocers')).toBeTruthy()
     expect(screen.getByText('-£24.15')).toBeTruthy()
-    expect(screen.getByText('Groceries')).toBeTruthy()
+    // The category is a dropdown now, so it is read off the control's value.
+    expect(
+      (screen.getByLabelText('Category for Greenfield Grocers') as HTMLSelectElement).value,
+    ).toBe('GROCERIES')
     // Both fixture rows are card payments.
     expect(screen.getAllByText('Card payment')).toHaveLength(2)
     expect(screen.getByText('2 transactions')).toBeTruthy()

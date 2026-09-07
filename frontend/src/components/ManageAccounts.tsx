@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { ApiError, api } from '../api/client'
 import type { AccountSummary } from '../api/types'
+import { useAsync } from '../hooks/useAsync'
 import type { AsyncState } from '../hooks/useAsync'
 import { Async, ErrorNotice } from './Async'
-import { label, money } from '../format'
+import { day, label, money } from '../format'
 
 /**
  * The accounts that exist, and the one destructive action in the application.
@@ -15,9 +16,11 @@ import { label, money } from '../format'
 export function ManageAccounts({
   accounts,
   onRemoved,
+  onStatementRemoved,
 }: {
   accounts: AsyncState<AccountSummary[]>
   onRemoved: (accountId: string) => void
+  onStatementRemoved: () => void
 }) {
   const [error, setError] = useState<ApiError | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
@@ -63,6 +66,7 @@ export function ManageAccounts({
                     {account.transactionCount} transactions
                   </span>
                 </div>
+                <Statements accountId={account.accountId} onRemoved={onStatementRemoved} />
                 <div>
                   <button
                     type="button"
@@ -79,5 +83,74 @@ export function ManageAccounts({
         )}
       </Async>
     </section>
+  )
+}
+
+/**
+ * The months this account holds, using the period each statement reported for itself.
+ *
+ * Removing one takes its transactions with it and frees the month to be uploaded again —
+ * which is the point: a statement exported too early can be replaced rather than
+ * deduplicated against forever.
+ */
+function Statements({
+  accountId,
+  onRemoved,
+}: {
+  accountId: string
+  onRemoved: () => void
+}) {
+  const [version, setVersion] = useState(0)
+  const statements = useAsync(() => api.statements(accountId), [accountId, version])
+  const [error, setError] = useState<ApiError | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
+
+  async function remove(importId: string, period: string) {
+    if (!window.confirm(`Remove the statement covering ${period} and its transactions?`)) {
+      return
+    }
+    setError(null)
+    setRemoving(importId)
+    try {
+      await api.deleteStatement(importId)
+      setVersion((previous) => previous + 1)
+      onRemoved()
+    } catch (caught) {
+      setError(caught as ApiError)
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  return (
+    <div className="stack">
+      <span className="figure-label">Loaded statements</span>
+      {error && <ErrorNotice error={error} />}
+      <Async state={statements} empty="No statements loaded yet." lines={2}>
+        {(list) => (
+          <ul className="statements">
+            {list.map((statement) => {
+              const period = `${day(statement.periodStart)} – ${day(statement.periodEnd)}`
+              return (
+                <li key={statement.id}>
+                  <span>
+                    {period}
+                    <span className="muted"> · {statement.importedCount} transactions</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    disabled={removing !== null}
+                    onClick={() => remove(statement.id, period)}
+                  >
+                    {removing === statement.id ? 'Removing…' : 'Remove'}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Async>
+    </div>
   )
 }

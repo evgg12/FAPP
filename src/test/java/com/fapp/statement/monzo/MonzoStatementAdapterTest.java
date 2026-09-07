@@ -227,17 +227,19 @@ class MonzoStatementAdapterTest {
     }
 
     @Test
-    void keepsPotTransfersAsOrdinaryRowsCategorisedAsTransfer() {
+    void keepsPotTransfersAsOrdinaryRowsCategorisedAsSavings() {
         RawTransaction out = row("tx_sample000000000000010");
         RawTransaction in = row("tx_sample000000000000019");
 
         assertThat(out.amount()).isEqualTo(Money.of("-200.00", "GBP"));
-        assertThat(out.category()).isEqualTo(Category.TRANSFER);
+        // Savings, not Transfer: a pot movement is reported as a pot balance and kept out
+        // of the spending breakdown.
+        assertThat(out.category()).isEqualTo(Category.SAVINGS);
         assertThat(out.transactionType()).isEqualTo(TransactionType.OTHER);
 
         // Monzo filed this one under "General"; being a pot transfer decides it.
         assertThat(in.amount()).isEqualTo(Money.of("75.00", "GBP"));
-        assertThat(in.category()).isEqualTo(Category.TRANSFER);
+        assertThat(in.category()).isEqualTo(Category.SAVINGS);
         assertThat(in.transactionType()).isEqualTo(TransactionType.OTHER);
     }
 

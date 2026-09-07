@@ -142,9 +142,9 @@ and the backend needs no CORS configuration. Point it elsewhere with
 ## Tests and build
 
 ```bash
-./mvnw test                   # 471 tests; requires Docker for Testcontainers
+./mvnw test                   # 479 tests; requires Docker for Testcontainers
 ./mvnw package                # target/fapp-0.0.1-SNAPSHOT.jar
-cd frontend && npm test       # 38 tests
+cd frontend && npm test       # 43 tests
 cd frontend && npm run build  # type-check, then dist/
 ```
 
@@ -231,11 +231,15 @@ authenticated user.
 | `GET` | `/users/{userId}/accounts` | The user's accounts |
 | `POST` | `/accounts/{accountId}/statements` | Import a CSV statement |
 | `GET` | `/imports/{importId}` | An import's outcome |
+| `DELETE` | `/imports/{importId}` | Remove one loaded statement and its transactions |
+| `GET` | `/accounts/{accountId}/statements` | The statements loaded into an account |
 | `GET` | `/accounts/{accountId}/transactions` | Transactions on an account |
+| `PATCH` | `/transactions/{transactionId}/category` | Change one transaction's category |
 | `POST` | `/users/{userId}/transactions/recategorise` | Reapply merchant rules |
 | `GET` | `/users/{userId}/analytics/summary` | Income, expenditure, net |
 | `GET` | `/users/{userId}/analytics/categories` | Per category |
 | `GET` | `/users/{userId}/analytics/monthly` | Per month |
+| `GET` | `/users/{userId}/analytics/savings-pot` | Savings-pot movement, excluded from categories |
 | `GET` | `/users/{userId}/analytics/accounts` | Per account |
 | `GET` | `/users/{userId}/analytics/largest-expenses` | Biggest outgoings |
 | `GET` | `/users/{userId}/analytics/comparison` | One period against another |
@@ -258,6 +262,7 @@ are forward-only, and are never edited once applied.
 | `V2__transaction_domain.sql` | `users`, `accounts`, `statement_imports`, `transactions`, `transfers`. |
 | `V3__savings_goals.sql` | `savings_goals`. |
 | `V4__user_credentials.sql` | Password hashes on `users`. |
+| `V5__custom_categories.sql` | `CUSTOM` category plus its user-supplied label. |
 
 ## Privacy
 
