@@ -41,7 +41,7 @@ export function SignInScreen({ onSignedIn }: { onSignedIn: (userId: string) => v
     <main className="signin">
       <div className="signin-brand">
         <h1>FAPP</h1>
-        <p className="muted">Financial Aggregation &amp; Planning Platform</p>
+        <p className="signin-tagline">its never too late to</p>
       </div>
 
       <section className="panel signin-card">
@@ -99,11 +99,6 @@ export function SignInScreen({ onSignedIn }: { onSignedIn: (userId: string) => v
           {registering ? 'I already have an account' : 'I need an account'}
         </button>
       </section>
-
-      <p className="muted signin-brand">
-        Credentials are kept for this browser tab only and are sent as HTTP Basic on each
-        request. Serve this over HTTPS.
-      </p>
     </main>
   )
 }
