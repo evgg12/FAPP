@@ -181,7 +181,6 @@ export default function App() {
           <div className="brandbar">
             <div className="brand">
               <h1>FAPP</h1>
-              <span className="brand-sub">Financial Aggregation &amp; Planning</span>
             </div>
             <div className="whoami">
               <span className="whoami-email">{email}</span>
