@@ -12,7 +12,7 @@ import { money } from '../format'
  */
 export function SavingsPotPanel({ state }: { state: AsyncState<SavingsPot> }) {
   return (
-    <section className="panel">
+    <section className="panel panel-fixed-primary panel-savings-pot">
       <div className="panel-head">
         <h2>Savings pot</h2>
       </div>

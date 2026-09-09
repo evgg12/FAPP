@@ -105,15 +105,24 @@ describe('featured goal panel', () => {
   }
 
   it('shows the featured goal and its progress', () => {
-    render(<FeaturedGoalPanel state={loaded(GOAL)} />)
+    render(<FeaturedGoalPanel state={loaded([GOAL])} />)
 
     expect(screen.getByText('Car Fund')).toBeTruthy()
     expect(screen.getByText('£2,350.00 of £8,000.00')).toBeTruthy()
     expect(screen.getByText('29%')).toBeTruthy()
   })
 
+  it('shows every featured goal when more than one is featured', () => {
+    const SECOND: SavingsGoal = { ...GOAL, id: 'g2', name: 'Holiday', targetAmount: 1200, currentAmount: 1200 }
+
+    render(<FeaturedGoalPanel state={loaded([GOAL, SECOND])} />)
+
+    expect(screen.getByText('Car Fund')).toBeTruthy()
+    expect(screen.getByText('Holiday')).toBeTruthy()
+  })
+
   it('shows an empty state when no goal is featured', () => {
-    render(<FeaturedGoalPanel state={{ loading: false, data: undefined }} />)
+    render(<FeaturedGoalPanel state={{ loading: false, data: [] }} />)
 
     expect(screen.getByText('No goal featured yet. Star one on the Goals page.')).toBeTruthy()
   })
@@ -201,7 +210,7 @@ describe('transaction list', () => {
   ]
 
   it('renders a row per transaction with its signed amount', () => {
-    render(<TransactionList state={loaded(transactions)} accountSelected />)
+    render(<TransactionList state={loaded(transactions)} accountSelected userId="u1" />)
 
     expect(screen.getByText('Greenfield Grocers')).toBeTruthy()
     expect(screen.getByText('-£24.15')).toBeTruthy()
@@ -215,19 +224,19 @@ describe('transaction list', () => {
   })
 
   it('shows the foreign amount alongside a converted purchase', () => {
-    render(<TransactionList state={loaded(transactions)} accountSelected />)
+    render(<TransactionList state={loaded(transactions)} accountSelected userId="u1" />)
 
     expect(screen.getByText('(-€21.90)')).toBeTruthy()
   })
 
   it('asks for an account before showing anything', () => {
-    render(<TransactionList state={{ loading: false }} accountSelected={false} />)
+    render(<TransactionList state={{ loading: false }} accountSelected={false} userId="u1" />)
 
     expect(screen.getByText('Select a single account to see its transactions.')).toBeTruthy()
   })
 
   it('says so when the account has no transactions yet', () => {
-    render(<TransactionList state={loaded<Transaction[]>([])} accountSelected />)
+    render(<TransactionList state={loaded<Transaction[]>([])} accountSelected userId="u1" />)
 
     expect(
       screen.getByText('No transactions on this account yet. Import a statement.'),

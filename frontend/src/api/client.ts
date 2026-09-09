@@ -9,6 +9,8 @@ import type {
   FinancialSummary,
   LargestExpense,
   MonthlySummary,
+  PinnedGroup,
+  PinnedTransaction,
   SavingsGoal,
   SavingsPot,
   StatementImport,
@@ -244,16 +246,9 @@ export const api = {
     return request<void>(`/api/users/${userId}/goals/${goalId}`, { method: 'DELETE' })
   },
 
-  /** The user's featured goal, or `undefined` if they have not featured one. */
-  async featuredGoal(userId: string): Promise<SavingsGoal | undefined> {
-    try {
-      return await request<SavingsGoal>(`/api/users/${userId}/goals/featured`)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return undefined
-      }
-      throw error
-    }
+  /** The user's featured goals, empty if they have not featured any. */
+  featuredGoal(userId: string): Promise<SavingsGoal[]> {
+    return request<SavingsGoal[]>(`/api/users/${userId}/goals/featured`)
   },
 
   featureGoal(userId: string, goalId: string): Promise<SavingsGoal> {
@@ -308,5 +303,69 @@ export const api = {
     return request<LargestExpense[]>(
       `/api/users/${userId}/analytics/largest-expenses?${analyticsQuery(range, accountId, limit)}`,
     )
+  },
+
+  pinnedGroups(userId: string): Promise<PinnedGroup[]> {
+    return request<PinnedGroup[]>(`/api/users/${userId}/pinned-groups`)
+  },
+
+  createPinnedGroup(userId: string, name: string, notes?: string): Promise<PinnedGroup> {
+    return request<PinnedGroup>(`/api/users/${userId}/pinned-groups`, json({ name, notes }))
+  },
+
+  updatePinnedGroup(
+    userId: string,
+    groupId: string,
+    name: string,
+    notes?: string,
+  ): Promise<PinnedGroup> {
+    return request<PinnedGroup>(`/api/users/${userId}/pinned-groups/${groupId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, notes }),
+    })
+  },
+
+  deletePinnedGroup(userId: string, groupId: string): Promise<void> {
+    return request<void>(`/api/users/${userId}/pinned-groups/${groupId}`, { method: 'DELETE' })
+  },
+
+  /** Pins one or more transactions into a group. Already-pinned ids are left as they are. */
+  addPinnedTransactions(
+    userId: string,
+    groupId: string,
+    transactionIds: string[],
+  ): Promise<PinnedGroup> {
+    return request<PinnedGroup>(
+      `/api/users/${userId}/pinned-groups/${groupId}/transactions`,
+      json({ transactionIds }),
+    )
+  },
+
+  removePinnedTransaction(userId: string, groupId: string, transactionId: string): Promise<void> {
+    return request<void>(
+      `/api/users/${userId}/pinned-groups/${groupId}/transactions/${transactionId}`,
+      { method: 'DELETE' },
+    )
+  },
+
+  /** Every transaction id this user has pinned, individually or into any group. */
+  pinnedTransactionIds(userId: string): Promise<string[]> {
+    return request<string[]>(`/api/users/${userId}/pinned-transactions/ids`)
+  },
+
+  /** The user's transactions pinned on their own, with no group. */
+  individualPins(userId: string): Promise<PinnedTransaction[]> {
+    return request<PinnedTransaction[]>(`/api/users/${userId}/pinned-transactions`)
+  },
+
+  /** Pins a transaction on its own. Idempotent: pinning an already-pinned one changes nothing. */
+  pinIndividually(userId: string, transactionId: string, note?: string): Promise<PinnedTransaction> {
+    return request<PinnedTransaction>(`/api/users/${userId}/pinned-transactions`, json({ transactionId, note }))
+  },
+
+  /** Removes an individual pin. Unpinning something not individually pinned is a no-op. */
+  unpinIndividually(userId: string, transactionId: string): Promise<void> {
+    return request<void>(`/api/users/${userId}/pinned-transactions/${transactionId}`, { method: 'DELETE' })
   },
 }

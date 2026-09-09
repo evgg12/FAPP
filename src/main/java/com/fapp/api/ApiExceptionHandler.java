@@ -3,6 +3,7 @@ package com.fapp.api;
 import com.fapp.analytics.MixedCurrencyException;
 import com.fapp.analytics.UnknownAnalyticsSubjectException;
 import com.fapp.goal.GoalNotFoundException;
+import com.fapp.pinned.PinnedGroupNotFoundException;
 import com.fapp.security.ForbiddenException;
 import com.fapp.statement.DuplicateStatementException;
 import com.fapp.statement.StatementImportException;
@@ -58,6 +59,15 @@ class ApiExceptionHandler {
      */
     @ExceptionHandler(GoalNotFoundException.class)
     ResponseEntity<ApiError> goalNotFound(GoalNotFoundException e) {
+        return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
+    }
+
+    /**
+     * A pinned group, or a transaction being added to it, could not be resolved for
+     * this caller. Belonging to somebody else reports the same thing as not existing.
+     */
+    @ExceptionHandler(PinnedGroupNotFoundException.class)
+    ResponseEntity<ApiError> pinnedGroupNotFound(PinnedGroupNotFoundException e) {
         return status(HttpStatus.NOT_FOUND, e.code(), e.getMessage());
     }
 

@@ -386,6 +386,7 @@ describe('editing a category', () => {
       <TransactionList
         state={loaded([TRANSACTION])}
         accountSelected
+        userId="u1"
         onCategoryChanged={onCategoryChanged}
       />,
     )
@@ -409,7 +410,7 @@ describe('editing a category', () => {
         headers: { 'Content-Type': 'application/json' },
       }))
 
-    render(<TransactionList state={loaded([TRANSACTION])} accountSelected />)
+    render(<TransactionList state={loaded([TRANSACTION])} accountSelected userId="u1" />)
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Category for Greenfield Grocers'), {
         target: { value: 'CUSTOM' },

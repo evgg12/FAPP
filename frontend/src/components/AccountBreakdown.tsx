@@ -6,13 +6,13 @@ import { label, money } from '../format'
 /** Per account and per bank, which is the point of aggregating two banks in one place. */
 export function AccountBreakdown({ state }: { state: AsyncState<AccountSummary[]> }) {
   return (
-    <section className="panel">
+    <section className="panel panel-fixed-account">
       <div className="panel-head">
         <h2>By account</h2>
       </div>
       <Async state={state} empty="No accounts yet. Add one to get started." lines={4}>
         {(accounts) => (
-          <div className="scroll">
+          <div className="scroll account-scroll">
             <table className="cards">
               <thead>
                 <tr>

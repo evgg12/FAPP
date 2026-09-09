@@ -18,7 +18,7 @@ class SchemaMigrationTest extends AbstractPostgresTest {
         List<String> versions = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class);
 
-        assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7");
+        assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
     }
 
     @Test
@@ -29,8 +29,8 @@ class SchemaMigrationTest extends AbstractPostgresTest {
                 String.class);
 
         assertThat(tables).containsExactly(
-                "accounts", "flyway_schema_history", "savings_goals", "statement_imports",
-                "transactions", "transfers", "users");
+                "accounts", "flyway_schema_history", "pinned_group_transactions", "pinned_groups",
+                "savings_goals", "statement_imports", "transactions", "transfers", "users");
     }
 
     @Test

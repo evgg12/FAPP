@@ -16,7 +16,7 @@ export function SummaryPanel({ state }: { state: AsyncState<FinancialSummary> })
       </div>
       <Async state={state} empty="No transactions in this period." lines={2}>
         {(summary) => (
-          <div className="figures">
+          <div className="figures figures-2x2">
             <Figure label="Income" value={money(summary.income)} />
             <Figure label="Expenditure" value={money(summary.expenditure)} />
             <Figure

@@ -4,7 +4,6 @@ import com.fapp.money.Money;
 import com.fapp.persistence.SeededDomainTest;
 import com.fapp.user.User;
 import java.time.LocalDate;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -146,7 +145,7 @@ class SavingsGoalServiceTest extends SeededDomainTest {
         SavingsGoal goal = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
 
         goals.feature(owner.id(), goal.id());
-        assertThat(goals.findFeatured(owner.id())).map(SavingsGoal::id).contains(goal.id());
+        assertThat(goals.findFeatured(owner.id())).extracting(SavingsGoal::id).contains(goal.id());
         assertThat(goals.find(owner.id(), goal.id()).featured()).isTrue();
 
         goals.unfeature(owner.id(), goal.id());
@@ -174,17 +173,18 @@ class SavingsGoalServiceTest extends SeededDomainTest {
     }
 
     @Test
-    void featuringAnotherGoalUnfeaturesThePrevious() {
+    void multipleGoalsCanBeFeaturedAtOnce() {
         SavingsGoal first = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
         SavingsGoal second = goals.create(owner.id(), "Holiday", Money.of("200.00", "GBP"), JUNE_2030);
 
         goals.feature(owner.id(), first.id());
         goals.feature(owner.id(), second.id());
 
-        assertThat(goals.find(owner.id(), first.id()).featured()).isFalse();
+        assertThat(goals.find(owner.id(), first.id()).featured()).isTrue();
         assertThat(goals.find(owner.id(), second.id()).featured()).isTrue();
-        Optional<SavingsGoal> featured = goals.findFeatured(owner.id());
-        assertThat(featured).map(SavingsGoal::id).contains(second.id());
+        assertThat(goals.findFeatured(owner.id()))
+                .extracting(SavingsGoal::id)
+                .containsExactly(first.id(), second.id());
     }
 
     @Test
