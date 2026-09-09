@@ -124,13 +124,29 @@ describe('accounts and their statements', () => {
     },
   ]
 
+  const SUMMARIES: Record<string, { income: number; expenditure: number; transactionCount: number }> = {
+    '2026-08-01': { income: 100, expenditure: 40, transactionCount: 3 },
+    '2026-01-01': { income: 0, expenditure: 0, transactionCount: 0 },
+  }
+
   function withStatements() {
     return vi.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
       if ((init as RequestInit | undefined)?.method === 'DELETE') {
         return Promise.resolve(new Response(null, { status: 204 }))
       }
+      const href = String(url)
+      if (href.includes('/analytics/summary')) {
+        const from = new URL(href, 'http://localhost').searchParams.get('from')!
+        const figures = SUMMARIES[from] ?? { income: 0, expenditure: 0, transactionCount: 0 }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ period: { from, to: from }, netSavings: 0, ...figures }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
       return Promise.resolve(
-        new Response(JSON.stringify(String(url).includes('/statements') ? STATEMENTS : []), {
+        new Response(JSON.stringify(href.includes('/statements') ? STATEMENTS : []), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -138,16 +154,144 @@ describe('accounts and their statements', () => {
     })
   }
 
-  it('lists the period each loaded statement covers', async () => {
+  it('lists the period each loaded statement covers, defaulting to its month', async () => {
     withStatements()
     await act(async () => {
       render(
-        <ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={vi.fn()} onStatementRemoved={vi.fn()} />,
+        <ManageAccounts
+          userId="u1"
+          accounts={loaded(ACCOUNTS)}
+          onRemoved={vi.fn()}
+          onStatementRemoved={vi.fn()}
+        />,
       )
     })
 
+    // Defaults to the latest statement's month without the user having to pick it.
+    expect((screen.getByLabelText('Statement month') as HTMLSelectElement).value).toBe('08')
+    expect((screen.getByLabelText('Statement year') as HTMLSelectElement).value).toBe('2026')
     // The dates the statement itself reported, not when it was uploaded.
     expect(screen.getByText(/03 Aug 2026 – 29 Aug 2026/)).toBeTruthy()
+    expect(screen.getByText(/£100\.00 in · £40\.00 out · 3 transactions/)).toBeTruthy()
+  })
+
+  it('updates the "In this period" figures when the selected month changes', async () => {
+    withStatements()
+    await act(async () => {
+      render(
+        <ManageAccounts
+          userId="u1"
+          accounts={loaded(ACCOUNTS)}
+          onRemoved={vi.fn()}
+          onStatementRemoved={vi.fn()}
+        />,
+      )
+    })
+
+    expect(screen.getByText(/£100\.00 in · £40\.00 out · 3 transactions/)).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Statement month'), { target: { value: '01' } })
+    })
+
+    expect(screen.getByText(/£0\.00 in · £0\.00 out · 0 transactions/)).toBeTruthy()
+    expect(screen.queryByText(/£100\.00 in · £40\.00 out · 3 transactions/)).toBeNull()
+  })
+
+  it('never overwrites a month the user already chose, even once statement data reloads', async () => {
+    // Two statements so there is a "latest" (August) distinct from the one the user
+    // picks (July), and a delete-triggered refetch to prove the choice survives a reload.
+    let currentStatements = [
+      {
+        id: 'i2',
+        accountId: 'a1',
+        provider: 'monzo',
+        periodStart: '2026-07-05',
+        periodEnd: '2026-07-28',
+        rowCount: 10,
+        importedCount: 10,
+        duplicateCount: 0,
+        importedAt: '2026-08-01T10:00:00Z',
+      },
+      STATEMENTS[0],
+    ]
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
+      const request = init as RequestInit | undefined
+      if (request?.method === 'DELETE') {
+        const removedId = String(url).split('/').pop()
+        currentStatements = currentStatements.filter((statement) => statement.id !== removedId)
+        return Promise.resolve(new Response(null, { status: 204 }))
+      }
+      const href = String(url)
+      if (href.includes('/analytics/summary')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ period: { from: '', to: '' }, income: 0, expenditure: 0, netSavings: 0, transactionCount: 0 }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(href.includes('/statements') ? currentStatements : []), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await act(async () => {
+      render(
+        <ManageAccounts
+          userId="u1"
+          accounts={loaded(ACCOUNTS)}
+          onRemoved={vi.fn()}
+          onStatementRemoved={vi.fn()}
+        />,
+      )
+    })
+
+    // Defaults to August, the latest statement.
+    expect((screen.getByLabelText('Statement month') as HTMLSelectElement).value).toBe('08')
+
+    // The user deliberately picks July instead.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Statement month'), { target: { value: '07' } })
+    })
+    expect(screen.getByText(/05 Jul 2026 – 28 Jul 2026/)).toBeTruthy()
+
+    // Deleting the July statement forces the statement list to reload.
+    await act(async () => {
+      screen.getByRole('button', { name: 'Remove' }).click()
+    })
+
+    // The picker still shows July — the newer August statement never silently took over.
+    expect((screen.getByLabelText('Statement month') as HTMLSelectElement).value).toBe('07')
+    expect(screen.getByText(/No statement uploaded for July 2026/)).toBeTruthy()
+  })
+
+  it('shows no statement for a month nothing was uploaded for, and offers to import one', async () => {
+    withStatements()
+    const onSelectAccount = vi.fn()
+
+    await act(async () => {
+      render(
+        <ManageAccounts
+          userId="u1"
+          accounts={loaded(ACCOUNTS)}
+          onRemoved={vi.fn()}
+          onStatementRemoved={vi.fn()}
+          onSelectAccount={onSelectAccount}
+        />,
+      )
+    })
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Statement month'), { target: { value: '01' } })
+    })
+
+    expect(screen.getByText(/No statement uploaded for January 2026/)).toBeTruthy()
+    screen.getByRole('button', { name: 'Import a statement for this account' }).click()
+    expect(onSelectAccount).toHaveBeenCalledWith('a1')
   })
 
   it('removes one statement without removing the account', async () => {
@@ -158,6 +302,7 @@ describe('accounts and their statements', () => {
     await act(async () => {
       render(
         <ManageAccounts
+          userId="u1"
           accounts={loaded(ACCOUNTS)}
           onRemoved={vi.fn()}
           onStatementRemoved={onStatementRemoved}
@@ -179,7 +324,7 @@ describe('accounts and their statements', () => {
 
     await act(async () => {
       render(
-        <ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} onStatementRemoved={vi.fn()} />,
+        <ManageAccounts userId="u1" accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} onStatementRemoved={vi.fn()} />,
       )
     })
     await act(async () => {
@@ -200,7 +345,7 @@ describe('accounts and their statements', () => {
 
     await act(async () => {
       render(
-        <ManageAccounts accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} onStatementRemoved={vi.fn()} />,
+        <ManageAccounts userId="u1" accounts={loaded(ACCOUNTS)} onRemoved={onRemoved} onStatementRemoved={vi.fn()} />,
       )
     })
     await act(async () => {
