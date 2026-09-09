@@ -6,7 +6,6 @@ import com.fapp.user.UserRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,27 +88,17 @@ public class SavingsGoalService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<SavingsGoal> findFeatured(UUID userId) {
+    public List<SavingsGoal> findFeatured(UUID userId) {
         requireUser(userId);
-        return goals.findByUser_IdAndFeaturedTrue(userId);
+        return goals.findByUser_IdAndFeaturedTrueOrderByCreatedAtAsc(userId);
     }
 
     /**
-     * Marks a goal as the user's featured one, unfeaturing whatever was featured before.
+     * Marks a goal as featured, alongside any others the user has already featured.
      * Featuring an already-featured goal is a no-op, so the operation is idempotent.
-     *
-     * <p>The unfeature is flushed ahead of the feature so the two updates reach the
-     * database in that order: the partial unique index checks each row as it is written,
-     * not at commit, so writing the new featured row before the old one is cleared would
-     * violate it even though both changes are part of the same transaction.
      */
     public SavingsGoal feature(UUID userId, UUID goalId) {
         SavingsGoal goal = find(userId, goalId);
-        if (goal.featured()) {
-            return goal;
-        }
-        goals.findByUser_IdAndFeaturedTrue(userId).ifPresent(SavingsGoal::unfeature);
-        goals.flush();
         goal.feature();
         return goal;
     }

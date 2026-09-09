@@ -201,3 +201,32 @@ export interface SavingsPot {
   balance: number
   transactionCount: number
 }
+
+/**
+ * A transaction as it appears pinned -- individually or inside a group: enough to
+ * display, nothing more. `note` is set only on an individual pin.
+ */
+export interface PinnedTransaction {
+  transactionId: string
+  accountId: string
+  bookingDate: string
+  amount: number
+  currency: string
+  description: string
+  merchant?: string
+  category: Category
+  customCategory?: string
+  note?: string
+  pinnedAt: string
+}
+
+/** A named group of pinned transactions, with optional notes. Organisational only. */
+export interface PinnedGroup {
+  id: string
+  userId: string
+  name: string
+  notes?: string
+  transactions: PinnedTransaction[]
+  createdAt: string
+  updatedAt: string
+}

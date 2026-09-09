@@ -3,6 +3,7 @@ import { ApiError, api } from '../api/client'
 import type { Category, Transaction } from '../api/types'
 import { CATEGORIES } from '../api/types'
 import { Async, ErrorNotice } from './Async'
+import { PinStarButton } from './PinStarButton'
 import type { AsyncState } from '../hooks/useAsync'
 import { day, label, money } from '../format'
 
@@ -21,11 +22,17 @@ export function TransactionList({
   state,
   accountSelected,
   limit,
+  userId,
+  pinnedIds = new Set(),
+  onPinChanged = () => {},
   onCategoryChanged,
 }: {
   state: AsyncState<Transaction[]>
   accountSelected: boolean
   limit?: number
+  userId: string
+  pinnedIds?: Set<string>
+  onPinChanged?: () => void
   onCategoryChanged?: () => void
 }) {
   return (
@@ -54,6 +61,7 @@ export function TransactionList({
                         <th>Category</th>
                         <th>Type</th>
                         <th className="right">Amount</th>
+                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -83,6 +91,15 @@ export function TransactionList({
                             className={transaction.amount < 0 ? 'right tone-down' : 'right tone-up'}
                           >
                             {money(transaction.amount, transaction.currency)}
+                          </td>
+                          <td data-label="">
+                            <PinStarButton
+                              userId={userId}
+                              transactionId={transaction.id}
+                              label={transaction.merchant ?? transaction.description}
+                              pinned={pinnedIds.has(transaction.id)}
+                              onChanged={onPinChanged}
+                            />
                           </td>
                         </tr>
                       ))}

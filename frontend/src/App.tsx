@@ -21,6 +21,7 @@ import { GoalsPanel } from './components/GoalsPanel'
 import { LargestExpenses } from './components/LargestExpenses'
 import { ManageAccounts } from './components/ManageAccounts'
 import { PeriodPicker } from './components/PeriodPicker'
+import { PinnedGroupsPanel } from './components/PinnedGroupsPanel'
 import { NetSavingsChart } from './components/NetSavingsChart'
 import { SavingsPotPanel } from './components/SavingsPotPanel'
 import { SignInScreen } from './components/SignInScreen'
@@ -155,6 +156,16 @@ export default function App() {
     [accountId, dataVersion],
   )
 
+  // Bumped by pinning or unpinning a transaction anywhere, and by any pinned-group
+  // change, so every star and the Pinned panel itself stay in sync with each other.
+  const [pinnedVersion, setPinnedVersion] = useState(0)
+  const bumpPinned = () => setPinnedVersion((version) => version + 1)
+  const pinnedIds = useAsync(
+    userId ? () => api.pinnedTransactionIds(userId) : null,
+    [userId, pinnedVersion],
+  )
+  const pinnedIdSet = useMemo(() => new Set(pinnedIds.data ?? []), [pinnedIds.data])
+
   if (!userId) {
     if (checkingSession) {
       return (
@@ -271,21 +282,42 @@ export default function App() {
 
         {view === 'dashboard' && (
           <>
-            <SummaryPanel state={summary} />
+            {/*
+              The upper area only: Summary and Savings pot on the left, Pinned and
+              Net savings on the right. The right stack fills and splits evenly
+              across the exact height the left stack ends up needing, via
+              `.stack-fill`, rather than sizing to its own content.
+            */}
             <div className="grid grid-2">
-              <SavingsPotPanel state={pot} />
-              <NetSavingsChart state={twelveMonths} />
+              <div className="stack">
+                <SummaryPanel state={summary} />
+                <SavingsPotPanel state={pot} />
+              </div>
+              <div className="stack stack-fill">
+                <PinnedGroupsPanel userId={userId} version={pinnedVersion} onChanged={bumpPinned} />
+                <NetSavingsChart state={twelveMonths} />
+              </div>
             </div>
-            <FeaturedGoalPanel state={featuredGoal} />
             <div className="grid grid-2">
               <CategoryBreakdown state={categories} />
-              <AccountBreakdown state={accounts} />
+              <div className="stack stack-fill">
+                <AccountBreakdown state={accounts} />
+                <FeaturedGoalPanel state={featuredGoal} />
+              </div>
             </div>
-            <LargestExpenses state={largest} />
+            <LargestExpenses
+              state={largest}
+              userId={userId}
+              pinnedIds={pinnedIdSet}
+              onPinChanged={bumpPinned}
+            />
             <TransactionList
               state={transactions}
               accountSelected={accountId !== null}
               limit={8}
+              userId={userId}
+              pinnedIds={pinnedIdSet}
+              onPinChanged={bumpPinned}
               onCategoryChanged={() => setDataVersion((version) => version + 1)}
             />
           </>
@@ -295,6 +327,9 @@ export default function App() {
           <TransactionList
             state={transactions}
             accountSelected={accountId !== null}
+            userId={userId}
+            pinnedIds={pinnedIdSet}
+            onPinChanged={bumpPinned}
             onCategoryChanged={() => setDataVersion((version) => version + 1)}
           />
         )}

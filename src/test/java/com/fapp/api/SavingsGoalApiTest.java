@@ -162,16 +162,16 @@ class SavingsGoalApiTest extends ApiTestSupport {
      * "featured" must be resolved as its own literal route, not fall through to
      * {@code /{goalId}} and fail there trying to parse "featured" as a UUID. A goal
      * exists so there is something for the wrong route to find; landing on the wrong
-     * route would answer 400 INVALID_PARAMETER instead of this 404.
+     * route would answer 400 INVALID_PARAMETER instead of this empty list.
      */
     @Test
     void routesFeaturedAsItsOwnEndpointRatherThanAsAGoalId() throws Exception {
         create("Car Fund", "8000.00");
 
         mockMvc.perform(get(goals() + "/featured"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("GOAL_NOT_FOUND"))
-                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not("INVALID_PARAMETER")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
@@ -184,20 +184,23 @@ class SavingsGoalApiTest extends ApiTestSupport {
 
         mockMvc.perform(get(goals() + "/featured"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(goalId))
-                .andExpect(jsonPath("$.name").value("Car Fund"))
-                .andExpect(jsonPath("$.featured").value(true));
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(goalId))
+                .andExpect(jsonPath("$[0].name").value("Car Fund"))
+                .andExpect(jsonPath("$[0].featured").value(true));
 
         mockMvc.perform(delete(goals() + "/" + goalId + "/featured")).andExpect(status().isNoContent());
 
-        mockMvc.perform(get(goals() + "/featured")).andExpect(status().isNotFound());
+        mockMvc.perform(get(goals() + "/featured"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
         mockMvc.perform(get(goals() + "/" + goalId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.featured").value(false));
     }
 
     @Test
-    void featuringASecondGoalUnfeaturesTheFirst() throws Exception {
+    void featuringASecondGoalKeepsTheFirstFeaturedThroughTheApi() throws Exception {
         String first = create("Car Fund", "8000.00");
         String second = create("Holiday", "1200.00");
 
@@ -205,9 +208,11 @@ class SavingsGoalApiTest extends ApiTestSupport {
         mockMvc.perform(put(goals() + "/" + second + "/featured")).andExpect(status().isOk());
 
         mockMvc.perform(get(goals() + "/" + first))
-                .andExpect(jsonPath("$.featured").value(false));
+                .andExpect(jsonPath("$.featured").value(true));
         mockMvc.perform(get(goals() + "/" + second))
                 .andExpect(jsonPath("$.featured").value(true));
+        mockMvc.perform(get(goals() + "/featured"))
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test

@@ -16,6 +16,6 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID> 
      */
     Optional<SavingsGoal> findByIdAndUser_Id(UUID id, UUID userId);
 
-    /** The user's featured goal, if they have explicitly marked one. */
-    Optional<SavingsGoal> findByUser_IdAndFeaturedTrue(UUID userId);
+    /** The user's featured goals, oldest-featured first. */
+    List<SavingsGoal> findByUser_IdAndFeaturedTrueOrderByCreatedAtAsc(UUID userId);
 }

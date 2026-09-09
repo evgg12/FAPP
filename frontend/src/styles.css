@@ -292,11 +292,34 @@ p {
   }
 }
 
+/*
+ * Grid columns stretch to the row's height by default, so a shorter column with a
+ * non-growing flex stack (like the upper dashboard's left column) is left with dead
+ * space below its last panel whenever the other column runs taller -- including when
+ * that column's own content, such as an opened inline form, grows. Sizing each column
+ * to its own content instead removes that space without touching either column's
+ * internal layout.
+ */
+.grid-top {
+  align-items: start;
+}
+
 .stack {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
   min-width: 0;
+}
+
+/*
+ * A stack that must fill exactly the height its sibling grid column ends up needing
+ * (a plain grid item stretches to that height by default) and split it evenly between
+ * its two panels, instead of sizing to its own content and leaving the two columns
+ * misaligned or one shorter than the other.
+ */
+.stack-fill > .panel {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .row {
@@ -441,21 +464,54 @@ button:disabled {
   width: 100%;
 }
 
+/* Just the star glyph as the button -- no chip, border, or shadow around it. */
 .btn-star {
-  background: var(--panel);
-  border-color: var(--line-strong);
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   color: var(--muted);
-  padding: var(--s2) var(--s3);
+  padding: 2px;
+  min-height: auto;
+  min-width: auto;
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 .btn-star:hover:not(:disabled) {
-  background: var(--sunken);
+  background: none;
+  color: var(--ink);
+  transform: none;
 }
 
 .btn-star-active {
-  background: var(--in-soft);
-  border-color: var(--in);
-  color: var(--in);
+  color: #c9971f;
+}
+
+.btn-star-active:hover:not(:disabled) {
+  color: #b17f0f;
+}
+
+/* A small round icon-only trigger, for an action that must not compete for space with a heading row. */
+.btn-icon {
+  background: var(--accent-soft);
+  border: 1px solid #cdd8ea;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--accent);
+  min-height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: #dde6f5;
+  transform: none;
 }
 
 @media (min-width: 620px) {
@@ -507,6 +563,15 @@ button:disabled {
   .figures {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+/*
+ * Summary always reads as a 2x2 grid, never a single row of four. Comes after the
+ * @media rule above in source order, so it wins at every width despite matching
+ * specificity.
+ */
+.figures-2x2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .figure {
@@ -669,6 +734,51 @@ button:disabled {
 
 .scroll {
   min-width: 0;
+}
+
+/*
+ * By Account and Featured Goal sit side by side in a `.stack-fill` next to By Category,
+ * and must split whatever total height that gives them evenly (see `.stack-fill`
+ * above) rather than each claiming its own fixed share regardless of the other column.
+ * Only By Account's account rows scroll past a cap, via `.account-scroll` below; its
+ * heading stays outside that cap and is never squeezed out.
+ */
+.panel-fixed-account .account-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: 10rem;
+}
+
+.account-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+
+/* Same cap and scroll behaviour as `.account-scroll`, for a panel of goal cards instead of a table. */
+.featured-goal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 10rem;
+}
+
+.featured-goal-card + .featured-goal-card {
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 899px) {
+  /* Below the two-column breakpoint these stack full-width; let them size to content. */
+  .panel-fixed-account .account-scroll,
+  .featured-goal-scroll {
+    flex: none;
+    overflow-y: visible;
+    max-height: none;
+  }
 }
 
 table {
@@ -892,6 +1002,89 @@ th {
   gap: var(--s2);
 }
 
+/* Same card language as .goal, for a pinned group in the compact Pinned panel. */
+.pinned-group-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+/*
+ * Savings Pot keeps its own comfortable baseline height (below), independent of
+ * whatever Pinned ends up needing.
+ */
+:root {
+  --dashboard-primary-height: 9rem;
+}
+
+.panel-fixed-primary {
+  height: var(--dashboard-primary-height);
+  overflow: hidden;
+}
+
+/*
+ * Savings Pot's own rendered content is taller than the shared
+ * --dashboard-primary-height estimate. A fixed height plus overflow: hidden
+ * (inherited from panel-fixed-primary) clipped the bottom of the figures whenever
+ * content nudged past whatever guessed value was hard-coded here. min-height keeps
+ * Savings Pot at roughly that baseline while letting it grow to fit its real content
+ * instead of clipping it.
+ */
+.panel-savings-pot {
+  height: auto;
+  min-height: calc(var(--dashboard-primary-height) + 0.5rem);
+  overflow: visible;
+}
+
+/*
+ * Pinned sits in a `.stack-fill` next to Net savings, so it takes an even share of
+ * whatever total height that stack ends up stretched to (see `.stack-fill` above)
+ * rather than claiming a fixed height of its own. Only `.pinned-scroll` (the list)
+ * is capped and scrolls; the heading, toggle, and create-group control/form sit above
+ * it in normal flow, shrinking the list -- never themselves -- when space is tight, so
+ * the Create/Cancel buttons are never pushed out of view.
+ */
+.pinned-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  max-height: 10rem;
+}
+
+/* Compact form so it leaves the list as much room as possible within the stack's share. */
+.pinned-panel .inline-form {
+  padding: var(--s2);
+  gap: var(--s2);
+}
+
+@media (max-width: 699px) {
+  /*
+   * A fixed height that suits desktop's two-column composition would either clip
+   * content or force premature scrolling once panels stack full-width on a phone.
+   */
+  .panel-fixed-primary,
+  .panel-savings-pot {
+    height: auto;
+    overflow: visible;
+  }
+
+  .pinned-scroll {
+    max-height: 11rem;
+  }
+}
+
+.pin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .badge {
   display: inline-block;
   font-size: 0.7rem;
@@ -951,6 +1144,54 @@ th {
   font-weight: 500;
 }
 
+/* ---------- Inline forms (in place of a modal) ---------- */
+
+.inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s3);
+  background: var(--sunken);
+  border-radius: var(--radius-sm);
+}
+
+/* A single name field plus its actions, all on one line, for a form that has to fit in a tight space. */
+.inline-form-row {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.inline-form-row input {
+  flex: 1;
+  min-width: 8rem;
+}
+
+/* ---------- Contextual pin control ---------- */
+
+.pin-control {
+  position: relative;
+  display: inline-block;
+}
+
+.pin-popover {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  margin-top: var(--s1);
+  width: 16rem;
+  max-width: min(16rem, calc(100vw - 2 * var(--s4)));
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
 /* ---------- Modal ---------- */
 
 .modal {
@@ -978,6 +1219,26 @@ th {
   max-width: 30rem;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+/*
+ * A modal whose middle section scrolls on its own, so a long results list never pushes
+ * the header, search controls or the primary action out of reach. The card itself stops
+ * scrolling as a whole -- only .modal-scroll does -- which is why max-height is enforced
+ * here again with overflow hidden, overriding the plain .modal-card behaviour above.
+ */
+.modal-card-tall {
+  width: 100%;
+  max-width: 36rem;
+  max-height: 90vh;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-scroll {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* ---------- Compact chart ---------- */
