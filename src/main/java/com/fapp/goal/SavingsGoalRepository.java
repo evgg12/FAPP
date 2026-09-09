@@ -15,4 +15,7 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID> 
      * else is simply not found rather than found and then rejected.
      */
     Optional<SavingsGoal> findByIdAndUser_Id(UUID id, UUID userId);
+
+    /** The user's featured goal, if they have explicitly marked one. */
+    Optional<SavingsGoal> findByUser_IdAndFeaturedTrue(UUID userId);
 }

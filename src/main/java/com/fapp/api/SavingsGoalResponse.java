@@ -26,6 +26,7 @@ public record SavingsGoalResponse(
         BigDecimal percentageComplete,
         boolean achieved,
         LocalDate targetDate,
+        boolean featured,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -42,6 +43,7 @@ public record SavingsGoalResponse(
                 progress.percentage(),
                 progress.achieved(),
                 goal.targetDate(),
+                goal.featured(),
                 goal.createdAt(),
                 goal.updatedAt());
     }

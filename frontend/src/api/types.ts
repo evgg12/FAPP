@@ -175,6 +175,7 @@ export interface SavingsGoal {
   percentageComplete: number
   achieved: boolean
   targetDate: string
+  featured: boolean
   createdAt: string
   updatedAt: string
 }

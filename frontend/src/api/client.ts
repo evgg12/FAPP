@@ -244,6 +244,28 @@ export const api = {
     return request<void>(`/api/users/${userId}/goals/${goalId}`, { method: 'DELETE' })
   },
 
+  /** The user's featured goal, or `undefined` if they have not featured one. */
+  async featuredGoal(userId: string): Promise<SavingsGoal | undefined> {
+    try {
+      return await request<SavingsGoal>(`/api/users/${userId}/goals/featured`)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return undefined
+      }
+      throw error
+    }
+  },
+
+  featureGoal(userId: string, goalId: string): Promise<SavingsGoal> {
+    return request<SavingsGoal>(`/api/users/${userId}/goals/${goalId}/featured`, {
+      method: 'PUT',
+    })
+  },
+
+  unfeatureGoal(userId: string, goalId: string): Promise<void> {
+    return request<void>(`/api/users/${userId}/goals/${goalId}/featured`, { method: 'DELETE' })
+  },
+
   /** The statements loaded into an account, with the period each one covers. */
   statements(accountId: string): Promise<StatementImport[]> {
     return request<StatementImport[]>(`/api/accounts/${accountId}/statements`)
