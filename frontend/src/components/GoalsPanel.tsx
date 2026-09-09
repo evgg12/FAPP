@@ -70,9 +70,27 @@ function GoalRow({
     <article className="goal">
       <div className="spread">
         <h3>{goal.name}</h3>
-        <span className={goal.achieved ? 'badge' : 'badge badge-open'}>
-          {goal.achieved ? 'Met' : percent(goal.percentageComplete)}
-        </span>
+        <div className="row row-tight">
+          <button
+            type="button"
+            className={goal.featured ? 'btn-star btn-star-active' : 'btn-star'}
+            disabled={busy}
+            aria-pressed={goal.featured}
+            aria-label={goal.featured ? `Unfeature ${goal.name}` : `Feature ${goal.name}`}
+            onClick={() =>
+              run(() =>
+                goal.featured
+                  ? api.unfeatureGoal(userId, goal.id)
+                  : api.featureGoal(userId, goal.id),
+              )
+            }
+          >
+            {goal.featured ? '★ Featured' : '☆ Feature'}
+          </button>
+          <span className={goal.achieved ? 'badge' : 'badge badge-open'}>
+            {goal.achieved ? 'Met' : percent(goal.percentageComplete)}
+          </span>
+        </div>
       </div>
       <div className="bar-track">
         <div

@@ -16,6 +16,7 @@ import { AccountBreakdown } from './components/AccountBreakdown'
 import { AccountChips } from './components/AccountChips'
 import { AccountForm } from './components/AccountForm'
 import { CategoryBreakdown } from './components/CategoryBreakdown'
+import { FeaturedGoalPanel } from './components/FeaturedGoalPanel'
 import { GoalsPanel } from './components/GoalsPanel'
 import { LargestExpenses } from './components/LargestExpenses'
 import { ManageAccounts } from './components/ManageAccounts'
@@ -139,6 +140,10 @@ export default function App() {
   const pot = useAsync(
     ready ? () => api.savingsPot(userId!, range, accountId ?? undefined) : null,
     analyticsKey,
+  )
+  const featuredGoal = useAsync(
+    userId ? () => api.featuredGoal(userId) : null,
+    [userId, view],
   )
   const twelveMonths = useAsync(
     userId ? () => api.monthly(userId, twelveMonthRange(), accountId ?? undefined) : null,
@@ -271,6 +276,7 @@ export default function App() {
               <SavingsPotPanel state={pot} />
               <NetSavingsChart state={twelveMonths} />
             </div>
+            <FeaturedGoalPanel state={featuredGoal} />
             <div className="grid grid-2">
               <CategoryBreakdown state={categories} />
               <AccountBreakdown state={accounts} />

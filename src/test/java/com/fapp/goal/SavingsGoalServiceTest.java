@@ -4,6 +4,7 @@ import com.fapp.money.Money;
 import com.fapp.persistence.SeededDomainTest;
 import com.fapp.user.User;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -131,6 +132,81 @@ class SavingsGoalServiceTest extends SeededDomainTest {
         jdbc.update("DELETE FROM users WHERE id = ?", owner.id());
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM savings_goals", Integer.class)).isZero();
+    }
+
+    @Test
+    void noGoalIsFeaturedUntilTheUserChoosesOne() {
+        goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+
+        assertThat(goals.findFeatured(owner.id())).isEmpty();
+    }
+
+    @Test
+    void featuresAndUnfeaturesAGoal() {
+        SavingsGoal goal = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+
+        goals.feature(owner.id(), goal.id());
+        assertThat(goals.findFeatured(owner.id())).map(SavingsGoal::id).contains(goal.id());
+        assertThat(goals.find(owner.id(), goal.id()).featured()).isTrue();
+
+        goals.unfeature(owner.id(), goal.id());
+        assertThat(goals.findFeatured(owner.id())).isEmpty();
+        assertThat(goals.find(owner.id(), goal.id()).featured()).isFalse();
+    }
+
+    @Test
+    void featuringAGoalIsIdempotent() {
+        SavingsGoal goal = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+
+        goals.feature(owner.id(), goal.id());
+        goals.feature(owner.id(), goal.id());
+
+        assertThat(goals.find(owner.id(), goal.id()).featured()).isTrue();
+    }
+
+    @Test
+    void unfeaturingAnUnfeaturedGoalIsIdempotent() {
+        SavingsGoal goal = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+
+        goals.unfeature(owner.id(), goal.id());
+
+        assertThat(goals.find(owner.id(), goal.id()).featured()).isFalse();
+    }
+
+    @Test
+    void featuringAnotherGoalUnfeaturesThePrevious() {
+        SavingsGoal first = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+        SavingsGoal second = goals.create(owner.id(), "Holiday", Money.of("200.00", "GBP"), JUNE_2030);
+
+        goals.feature(owner.id(), first.id());
+        goals.feature(owner.id(), second.id());
+
+        assertThat(goals.find(owner.id(), first.id()).featured()).isFalse();
+        assertThat(goals.find(owner.id(), second.id()).featured()).isTrue();
+        Optional<SavingsGoal> featured = goals.findFeatured(owner.id());
+        assertThat(featured).map(SavingsGoal::id).contains(second.id());
+    }
+
+    @Test
+    void aUserCannotFeatureAnotherUsersGoal() {
+        SavingsGoal theirs = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+        User stranger = user("stranger@example.com");
+
+        assertThatExceptionOfType(GoalNotFoundException.class)
+                .isThrownBy(() -> goals.feature(stranger.id(), theirs.id()));
+        assertThatExceptionOfType(GoalNotFoundException.class)
+                .isThrownBy(() -> goals.unfeature(stranger.id(), theirs.id()));
+        assertThat(goals.find(owner.id(), theirs.id()).featured()).isFalse();
+    }
+
+    @Test
+    void featuredStatePersistsThroughTheDatabase() {
+        SavingsGoal goal = goals.create(owner.id(), "Car Fund", Money.of("100.00", "GBP"), JUNE_2030);
+        goals.feature(owner.id(), goal.id());
+
+        assertThat(jdbc.queryForObject(
+                "SELECT featured FROM savings_goals WHERE id = ?", Boolean.class, goal.id()))
+                .isTrue();
     }
 
     @Test

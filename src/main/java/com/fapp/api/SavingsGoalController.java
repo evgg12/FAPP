@@ -1,5 +1,6 @@
 package com.fapp.api;
 
+import com.fapp.goal.GoalNotFoundException;
 import com.fapp.goal.SavingsGoal;
 import com.fapp.goal.SavingsGoalService;
 import com.fapp.money.Money;
@@ -54,6 +55,24 @@ class SavingsGoalController {
     @GetMapping("/{goalId}")
     SavingsGoalResponse get(@PathVariable UUID userId, @PathVariable UUID goalId) {
         return SavingsGoalResponse.of(goals.find(userId, goalId));
+    }
+
+    /** The user's featured goal. Answers the same not-found shape as any other goal lookup. */
+    @GetMapping("/featured")
+    SavingsGoalResponse getFeatured(@PathVariable UUID userId) {
+        return SavingsGoalResponse.of(goals.findFeatured(userId).orElseThrow(() -> new GoalNotFoundException(
+                "GOAL_NOT_FOUND", "no featured savings goal for this user")));
+    }
+
+    @PutMapping("/{goalId}/featured")
+    SavingsGoalResponse feature(@PathVariable UUID userId, @PathVariable UUID goalId) {
+        return SavingsGoalResponse.of(goals.feature(userId, goalId));
+    }
+
+    @DeleteMapping("/{goalId}/featured")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void unfeature(@PathVariable UUID userId, @PathVariable UUID goalId) {
+        goals.unfeature(userId, goalId);
     }
 
     @PutMapping("/{goalId}")

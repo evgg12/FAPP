@@ -441,6 +441,23 @@ button:disabled {
   width: 100%;
 }
 
+.btn-star {
+  background: var(--panel);
+  border-color: var(--line-strong);
+  color: var(--muted);
+  padding: var(--s2) var(--s3);
+}
+
+.btn-star:hover:not(:disabled) {
+  background: var(--sunken);
+}
+
+.btn-star-active {
+  background: var(--in-soft);
+  border-color: var(--in);
+  color: var(--in);
+}
+
 @media (min-width: 620px) {
   .btn-wide {
     width: auto;

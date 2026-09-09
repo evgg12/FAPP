@@ -71,6 +71,9 @@ public class SavingsGoal {
     @Column(name = "target_date", nullable = false)
     private LocalDate targetDate;
 
+    @Column(name = "featured", nullable = false)
+    private boolean featured;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -173,6 +176,16 @@ public class SavingsGoal {
         this.currentAmount = updated;
     }
 
+    /** Marks this as the user's featured goal. Idempotent: featuring it again changes nothing. */
+    public void feature() {
+        this.featured = true;
+    }
+
+    /** Clears the featured flag. Idempotent: unfeaturing an unfeatured goal changes nothing. */
+    public void unfeature() {
+        this.featured = false;
+    }
+
     private void requireGoalCurrency(Money amount) {
         if (!amount.currency().equals(target.currency())) {
             throw new IllegalArgumentException(
@@ -213,6 +226,10 @@ public class SavingsGoal {
 
     public LocalDate targetDate() {
         return targetDate;
+    }
+
+    public boolean featured() {
+        return featured;
     }
 
     public Instant createdAt() {
