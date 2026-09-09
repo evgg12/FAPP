@@ -223,6 +223,43 @@ class AnalyticsServiceTest extends SeededDomainTest {
                 .allSatisfy(account -> assertThat(account.transactionCount()).isZero());
     }
 
+    @Test
+    void leavesASavingsPotMovementOutOfEveryOrdinaryTotal() {
+        // A pot movement has no counterpart account to link a Transfer against, so it is
+        // never a recorded transfer leg -- only its category says it is not ordinary
+        // income or expenditure. Every headline total must honour that, not just the
+        // category breakdown.
+        User saver = user("pot-saver@example.com");
+        Account current = account(saver, "monzo", "Monzo Current");
+        seed(current,
+                row("2026-08-04", "-40.00", Category.GROCERIES, "GROCER"),
+                row("2026-08-15", "-300.00", Category.SAVINGS, "TO POT"));
+        AnalyticsScope scope = AnalyticsScope.ofUser(saver.id());
+
+        FinancialSummary summary = analytics.summarise(scope, AUGUST);
+        assertThat(summary.expenditure()).isEqualByComparingTo("40.00");
+        assertThat(summary.transactionCount()).isEqualTo(1);
+
+        assertThat(analytics.summariseByMonth(scope, AUGUST))
+                .singleElement()
+                .satisfies(month -> assertThat(month.expenditure()).isEqualByComparingTo("40.00"));
+
+        assertThat(analytics.summariseByAccount(saver.id(), AUGUST))
+                .singleElement()
+                .satisfies(account -> {
+                    assertThat(account.expenditure()).isEqualByComparingTo("40.00");
+                    assertThat(account.transactionCount()).isEqualTo(1);
+                });
+
+        assertThat(analytics.findLargestExpenses(scope, AUGUST, 10))
+                .singleElement()
+                .satisfies(expense -> assertThat(expense.amount()).isEqualByComparingTo("40.00"));
+
+        // Still reported, correctly, as a pot movement.
+        SavingsPot pot = analytics.summarisePot(scope, AUGUST);
+        assertThat(pot.paidIn()).isEqualByComparingTo("300.00");
+    }
+
     // --- categories ---
 
     @Test

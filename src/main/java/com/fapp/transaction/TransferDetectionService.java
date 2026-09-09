@@ -43,12 +43,14 @@ public class TransferDetectionService {
     /**
      * How many calendar days apart the two legs may be booked.
      *
-     * <p>One, because the same movement routinely settles on different days at two
-     * banks — sent late on the Tuesday, credited on the Wednesday. Widening it buys a
+     * <p>Two, because the same movement routinely settles on different days at two
+     * banks — a self-transfer between two real FAPP accounts was observed crediting one
+     * bank two full calendar days before the other debited it, which one day of
+     * tolerance missed entirely. Still deliberately narrow: widening it further buys a
      * few more matches at the cost of pairing genuinely unrelated payments that happen
      * to be equal and opposite in the same week, which is not a trade worth making.
      */
-    public static final int DATE_TOLERANCE_DAYS = 1;
+    public static final int DATE_TOLERANCE_DAYS = 2;
 
     private final TransferCandidateRepository candidates;
     private final AccountRepository accounts;

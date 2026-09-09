@@ -17,10 +17,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The analytics endpoints over HTTP.
  *
  * <p>Seeded by importing the sanitised Monzo fixture, so the expected figures are those
- * of a statement the rest of the suite already pins. Summing its Amount column by hand
- * gives 1919.86 in (1842.55 + 2.31 + 75.00) and 845.56 out across the other fifteen
- * movements, netting 1074.30, over 2026-08-03 to 2026-08-29. Pinning those here means a
- * change in either the adapter or the analytics shows up as a disagreement.
+ * of a statement the rest of the suite already pins. The fixture holds 18 movements in
+ * total, two of which are the savings pot's own legs (200.00 paid in, 75.00 withdrawn)
+ * and are reported only on the pot endpoint, never as ordinary income or expenditure.
+ * The other sixteen sum by hand to 1844.86 in (1842.55 + 2.31) and 645.56 out, netting
+ * 1199.30, over 2026-08-03 to 2026-08-29. Pinning those here means a change in either
+ * the adapter or the analytics shows up as a disagreement.
  */
 class AnalyticsApiTest extends ApiTestSupport {
 
@@ -63,7 +65,7 @@ class AnalyticsApiTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.period.from").value("2026-08-01"))
                 .andExpect(jsonPath("$.period.to").value("2026-09-01"))
-                .andExpect(jsonPath("$.transactionCount").value(18))
+                .andExpect(jsonPath("$.transactionCount").value(16))
                 .andReturn();
 
         JsonNode summary = body(result);
@@ -71,9 +73,9 @@ class AnalyticsApiTest extends ApiTestSupport {
         assertThat(summary.get("income").decimalValue()
                 .subtract(summary.get("expenditure").decimalValue()))
                 .isEqualByComparingTo(summary.get("netSavings").decimalValue());
-        assertThat(summary.get("income").decimalValue()).isEqualByComparingTo("1919.86");
-        assertThat(summary.get("expenditure").decimalValue()).isEqualByComparingTo("845.56");
-        assertThat(summary.get("netSavings").decimalValue()).isEqualByComparingTo("1074.30");
+        assertThat(summary.get("income").decimalValue()).isEqualByComparingTo("1844.86");
+        assertThat(summary.get("expenditure").decimalValue()).isEqualByComparingTo("645.56");
+        assertThat(summary.get("netSavings").decimalValue()).isEqualByComparingTo("1199.30");
     }
 
     @Test
@@ -91,15 +93,12 @@ class AnalyticsApiTest extends ApiTestSupport {
             income = income.add(category.get("income").decimalValue());
         }
         /*
-         * The breakdown covers everything except the savings pot, which is reported on
-         * its own endpoint. Adding the pot back is what still proves nothing is lost:
-         * every penny is in exactly one of the two.
+         * The category breakdown and the headline summary both exclude the savings pot
+         * (reported separately, on its own endpoint), so the categories must add up to
+         * the summary exactly, with nothing left over and nothing double counted.
          */
-        JsonNode pot = body(mockMvc.perform(get(analytics("savings-pot"))).andReturn());
-        assertThat(expenditure.add(pot.get("paidIn").decimalValue()))
-                .isEqualByComparingTo(summary.get("expenditure").decimalValue());
-        assertThat(income.add(pot.get("withdrawn").decimalValue()))
-                .isEqualByComparingTo(summary.get("income").decimalValue());
+        assertThat(expenditure).isEqualByComparingTo(summary.get("expenditure").decimalValue());
+        assertThat(income).isEqualByComparingTo(summary.get("income").decimalValue());
     }
 
     @Test
@@ -110,7 +109,7 @@ class AnalyticsApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$[0].month").value("2026-07"))
                 .andExpect(jsonPath("$[0].transactionCount").value(0))
                 .andExpect(jsonPath("$[1].month").value("2026-08"))
-                .andExpect(jsonPath("$[1].transactionCount").value(18))
+                .andExpect(jsonPath("$[1].transactionCount").value(16))
                 .andExpect(jsonPath("$[2].month").value("2026-09"))
                 .andExpect(jsonPath("$[2].transactionCount").value(0));
     }
@@ -123,7 +122,7 @@ class AnalyticsApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$[0].accountId").value(accountId))
                 .andExpect(jsonPath("$[0].provider").value("monzo"))
                 .andExpect(jsonPath("$[0].accountName").value("Monzo Current"))
-                .andExpect(jsonPath("$[0].transactionCount").value(18));
+                .andExpect(jsonPath("$[0].transactionCount").value(16));
     }
 
     @Test
@@ -169,7 +168,7 @@ class AnalyticsApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.expenditure").value(0));
 
         mockMvc.perform(get(analytics("summary") + "&accountId=" + accountId))
-                .andExpect(jsonPath("$.transactionCount").value(18));
+                .andExpect(jsonPath("$.transactionCount").value(16));
     }
 
     @Test
@@ -287,7 +286,7 @@ class AnalyticsApiTest extends ApiTestSupport {
 
         authenticateAs("analytics@example.com");
         mockMvc.perform(get(analytics("summary")))
-                .andExpect(jsonPath("$.transactionCount").value(18));
+                .andExpect(jsonPath("$.transactionCount").value(16));
         // And cannot reach the other's, even knowing their id.
         mockMvc.perform(get("/api/users/" + strangerId + "/analytics/summary?" + AUGUST))
                 .andExpect(status().isForbidden());

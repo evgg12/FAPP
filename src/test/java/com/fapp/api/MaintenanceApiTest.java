@@ -144,7 +144,7 @@ class MaintenanceApiTest extends ApiTestSupport {
         mockMvc.perform(get("/api/users/" + userId
                         + "/analytics/summary?from=2026-08-01&to=2026-09-01&accountId=" + accountId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.transactionCount").value(18));
+                .andExpect(jsonPath("$.transactionCount").value(16));
     }
 
     // --- helpers ---

@@ -218,8 +218,8 @@ p {
   cursor: pointer;
 }
 
-.tab:hover {
-  background: var(--sunken);
+.tab:hover:not(:disabled) {
+  background: #eef4ff;
 }
 
 .tab[aria-current="page"] {
@@ -230,8 +230,7 @@ p {
 }
 
 .toolbar {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 10;
   background: var(--page);
   border-bottom: 1px solid var(--line);
@@ -258,10 +257,12 @@ p {
 /* ---------- Panels ---------- */
 
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 30px rgba(30, 55, 90, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   padding: var(--s4);
   display: flex;
   flex-direction: column;
@@ -378,16 +379,37 @@ button {
   font-weight: 500;
   min-height: var(--touch);
   padding: var(--s2) var(--s4);
-  border: 1px solid var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: rgba(49, 83, 140, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 6px 20px rgba(30, 55, 90, 0.14);
   color: #fff;
   cursor: pointer;
   white-space: nowrap;
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
 }
 
 button:hover:not(:disabled) {
-  background: #1d3868;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.48),
+      rgba(76, 116, 181, 0.82) 45%,
+      rgba(49, 83, 140, 0.9)
+    );
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(18, 38, 72, 0.16),
+    0 8px 22px rgba(30, 55, 90, 0.2);
+  transform: translateY(-1px);
 }
 
 button:disabled {
@@ -473,10 +495,18 @@ button:disabled {
 .figure {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--s1);
   padding: var(--s3);
-  background: var(--sunken);
+  background: rgba(226, 228, 232, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: var(--radius-sm);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(180, 185, 195, 0.12),
+    0 6px 18px rgba(30, 35, 45, 0.07);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
   min-width: 0;
 }
 
@@ -486,18 +516,20 @@ button:disabled {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
+  text-align: center;
 }
 
 .figure-value {
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 
 @media (min-width: 760px) {
   .figure-value {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
   }
 }
 
@@ -803,6 +835,9 @@ th {
   justify-content: center;
   padding: var(--s4);
   gap: var(--s4);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(214, 230, 250, 0.75), transparent 42%),
+    linear-gradient(135deg, #eef5fc 0%, #e5eef9 100%);
 }
 
 .signin-card {
@@ -815,8 +850,18 @@ th {
 }
 
 .signin-brand h1 {
-  font-size: 1.5rem;
-  letter-spacing: 0.04em;
+  margin: 0;
+  font-size: 3.5rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+.signin-tagline {
+  margin: var(--s2) 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- Goals ---------- */

@@ -36,6 +36,11 @@ import org.springframework.data.repository.query.Param;
  *       500.00 from a current account to a savings account is not 500.00 of income and
  *       500.00 of expenditure, and counting it as both would inflate every total and
  *       make net savings meaningless.
+ *   <li><strong>Savings Pot.</strong> A {@code SAVINGS}-categorised transaction is also
+ *       left out of every one of these totals. A pot movement is modelled as a single
+ *       leg with nothing to link a {@code Transfer} against (see
+ *       {@link #summarisePot}), so this category exclusion is what keeps it from being
+ *       reported once as a pot movement and again as ordinary income or expenditure.
  * </ul>
  *
  * <p>Totals are cast to {@code numeric(19,4)} so an empty period returns zero at the
@@ -65,6 +70,7 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
               AND t.booking_date < :to
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.outgoing_transaction_id = t.id)
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.incoming_transaction_id = t.id)
+              AND t.category <> 'SAVINGS'
             """)
     Totals summarise(@Param("userId") UUID userId,
                      @Param("accountId") UUID accountId,
@@ -105,6 +111,7 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
               AND t.booking_date < :to
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.outgoing_transaction_id = t.id)
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.incoming_transaction_id = t.id)
+              AND t.category <> 'SAVINGS'
             GROUP BY 1
             ORDER BY 1
             """)
@@ -132,6 +139,7 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
                   AND t.booking_date < :to
                   AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.outgoing_transaction_id = t.id)
                   AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.incoming_transaction_id = t.id)
+                  AND t.category <> 'SAVINGS'
             WHERE a.user_id = :userId
             GROUP BY a.id, a.provider, a.display_name
             ORDER BY 5 DESC, 3 ASC
@@ -163,6 +171,7 @@ public interface AnalyticsRepository extends Repository<Transaction, UUID> {
               AND t.amount < 0
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.outgoing_transaction_id = t.id)
               AND NOT EXISTS (SELECT 1 FROM transfers tr WHERE tr.incoming_transaction_id = t.id)
+              AND t.category <> 'SAVINGS'
             ORDER BY t.amount ASC, t.booking_date DESC, t.id ASC
             LIMIT :limit
             """)

@@ -77,14 +77,17 @@ class TransferDetectionOnImportTest extends AbstractPostgresTest {
 
     @Test
     void recognisesTheTransferWhenTheSecondAccountIsImported() {
-        // First statement: the money leaves the current account and there is nothing yet
-        // to match it against, so it counts as expenditure.
+        // First statement: the money leaves the current account, and there is nothing
+        // yet to match it against, so it is not yet a recorded transfer. It still never
+        // counts as expenditure, because Monzo's own "Pot transfer" type already marks
+        // it Category.SAVINGS -- the same rule that keeps a pot movement with no second
+        // account at all out of the ordinary totals.
         imports.importStatement(current, monzo(
                 "tx_out_1,10/08/2026,09:00:00,Pot transfer,Holiday Pot,,Transfers,-250.00,GBP,-250.00,GBP,,,,Holiday Pot,,250.00,"));
 
         assertThat(transferCount()).isZero();
         FinancialSummary afterFirst = analytics.summarise(AnalyticsScope.ofUser(owner.id()), AUGUST);
-        assertThat(afterFirst.expenditure()).isEqualByComparingTo("250.00");
+        assertThat(afterFirst.expenditure()).isEqualByComparingTo("0");
 
         // Second statement completes the pair, and both legs leave the totals.
         imports.importStatement(pot, monzo(
@@ -160,9 +163,12 @@ class TransferDetectionOnImportTest extends AbstractPostgresTest {
         imports.importStatement(only, monzo(
                 "tx_solo,10/08/2026,09:00:00,Pot transfer,Somewhere,,Transfers,-250.00,GBP,-250.00,GBP,,,,SOMEWHERE,,250.00,"));
 
+        // No second account means transfer detection cannot run at all, but a pot
+        // movement is excluded from ordinary expenditure by its category regardless --
+        // that is the one case Category.SAVINGS exists to cover on its own.
         assertThat(transferCount()).isZero();
         assertThat(analytics.summarise(AnalyticsScope.ofUser(solo.id()), AUGUST).expenditure())
-                .isEqualByComparingTo("250.00");
+                .isEqualByComparingTo("0");
     }
 
     @Test
