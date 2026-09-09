@@ -84,6 +84,23 @@ class TransferDetectionServiceTest extends SeededDomainTest {
     }
 
     @Test
+    void linksAPairBookedTwoDaysApart() {
+        // Observed in production data: a self-transfer where one bank credited two
+        // full calendar days before the other debited it, which a one-day tolerance
+        // missed entirely.
+        Transaction out = only(seed(current, row("2026-08-12", "-500.00", Category.TRANSFER, "OUT")));
+        Transaction in = only(seed(savings, row("2026-08-10", "500.00", Category.TRANSFER, "IN")));
+
+        List<Transfer> recorded = detection.detect(List.of(in));
+
+        assertThat(recorded).singleElement().satisfies(transfer -> {
+            assertThat(transfer.outgoing().id()).isEqualTo(out.id());
+            assertThat(transfer.incoming().id()).isEqualTo(in.id());
+        });
+        assertThat(transferCount()).isEqualTo(1);
+    }
+
+    @Test
     void findsThePartnerHoweverMuchLaterItsAccountIsImported() {
         // The first statement arrives with nothing to match; the second completes it.
         Transaction out = only(seed(current, row("2026-08-10", "-320.00", Category.SHOPPING, "OUT")));
@@ -151,9 +168,9 @@ class TransferDetectionServiceTest extends SeededDomainTest {
     }
 
     @Test
-    void leavesAPairBookedTwoDaysApartAlone() {
+    void leavesAPairBookedThreeDaysApartAlone() {
         seed(current, row("2026-08-10", "-500.00", Category.TRANSFER, "OUT"));
-        Transaction in = only(seed(savings, row("2026-08-12", "500.00", Category.TRANSFER, "IN")));
+        Transaction in = only(seed(savings, row("2026-08-13", "500.00", Category.TRANSFER, "IN")));
 
         assertThat(detection.detect(List.of(in))).isEmpty();
         assertThat(transferCount()).isZero();
@@ -304,6 +321,28 @@ class TransferDetectionServiceTest extends SeededDomainTest {
         assertThat(after.expenditure()).isEqualByComparingTo("24.15");
         assertThat(after.netSavings()).isEqualByComparingTo("-24.15");
         assertThat(after.transactionCount()).isEqualTo(1);
+    }
+
+    @Test
+    void takesBothLegsOutOfIncomeAndExpenditureWhenBookedTwoDaysApart() {
+        // The actual shape of the reported bug: a self-transfer whose legs settle two
+        // days apart at each bank stayed in both income and expenditure until the
+        // tolerance was widened enough to link it.
+        seed(current,
+                row("2026-08-03", "-24.15", Category.GROCERIES, "GROCER"),
+                row("2026-08-12", "-500.00", Category.TRANSFER, "TO SAVINGS"));
+        List<Transaction> incoming = seed(savings, row("2026-08-10", "500.00", Category.TRANSFER, "FROM CURRENT"));
+        AnalyticsScope scope = AnalyticsScope.ofUser(owner.id());
+
+        FinancialSummary before = analytics.summarise(scope, AUGUST);
+        assertThat(before.income()).isEqualByComparingTo("500.00");
+        assertThat(before.expenditure()).isEqualByComparingTo("524.15");
+
+        detection.detect(incoming);
+
+        FinancialSummary after = analytics.summarise(scope, AUGUST);
+        assertThat(after.income()).isEqualByComparingTo("0");
+        assertThat(after.expenditure()).isEqualByComparingTo("24.15");
     }
 
     // --- helpers ---
