@@ -312,16 +312,6 @@ export default function App() {
                 onClose={() => setCreatingAccount(false)}
               />
             )}
-            <ManageAccounts
-              accounts={accounts}
-              onRemoved={(removedId) => {
-                if (removedId === accountId) {
-                  setAccountId(null)
-                }
-                setDataVersion((version) => version + 1)
-              }}
-              onStatementRemoved={() => setDataVersion((version) => version + 1)}
-            />
             {accountId ? (
               <StatementUpload
                 accountId={accountId}
@@ -343,6 +333,18 @@ export default function App() {
                 />
               </section>
             )}
+            <ManageAccounts
+              userId={userId}
+              accounts={accounts}
+              onRemoved={(removedId) => {
+                if (removedId === accountId) {
+                  setAccountId(null)
+                }
+                setDataVersion((version) => version + 1)
+              }}
+              onStatementRemoved={() => setDataVersion((version) => version + 1)}
+              onSelectAccount={setAccountId}
+            />
           </>
         )}
 
