@@ -10,13 +10,6 @@ import com.fapp.transaction.Transaction;
 import com.fapp.transaction.TransactionRepository;
 import com.fapp.user.User;
 import com.fapp.user.UserRepository;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.net.URI;
@@ -46,7 +39,6 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/accounts")
-@Tag(name = "Accounts", description = "Manage user accounts and import statements")
 class AccountController {
 
     private final UserRepository users;
@@ -71,17 +63,6 @@ class AccountController {
     }
 
     @PostMapping
-    @Operation(summary = "Create a new account",
-            description = "Creates a new account for the authenticated user. Can only create accounts for oneself.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Account successfully created",
-                    content = @Content(schema = @Schema(implementation = AccountResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "403", description = "Attempting to create account for another user"),
-            @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
         // An account may only be opened for oneself.
         currentUser.requireSelf(request.userId());
@@ -118,19 +99,6 @@ class AccountController {
      * successful imports, and the counts in the body say which happened.
      */
     @PostMapping("/{accountId}/statements")
-    @Operation(summary = "Import a statement file",
-            description = "Imports a bank statement file into the specified account. The bank format is determined by the account provider.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Statement imported successfully",
-                    content = @Content(schema = @Schema(implementation = StatementImportResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid or empty statement file"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Account not found"),
-            @ApiResponse(responseCode = "409", description = "Statement already imported or import conflict"),
-            @ApiResponse(responseCode = "413", description = "Uploaded file exceeds maximum allowed size"),
-            @ApiResponse(responseCode = "422", description = "Statement file format unsupported or malformed")
-    })
-    @SecurityRequirement(name = "basicAuth")
     ResponseEntity<StatementImportResponse> importStatement(@PathVariable UUID accountId,
                                                             @RequestPart("file") MultipartFile file) {
         Account account = ownedAccount(accountId);
@@ -145,14 +113,6 @@ class AccountController {
     }
 
     @GetMapping("/{accountId}")
-    @Operation(summary = "Get account details")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Account details",
-                    content = @Content(schema = @Schema(implementation = AccountResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Account not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     AccountResponse get(@PathVariable UUID accountId) {
         return AccountResponse.of(ownedAccount(accountId));
     }
@@ -171,14 +131,6 @@ class AccountController {
      * would retain more than it should.
      */
     @DeleteMapping("/{accountId}")
-    @Operation(summary = "Delete an account",
-            description = "Permanently removes an account and all its associated transactions and imports. This action cannot be undone.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Account successfully deleted"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Account not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     ResponseEntity<Void> delete(@PathVariable UUID accountId) {
         accounts.delete(ownedAccount(accountId));
         return ResponseEntity.noContent().build();
@@ -189,28 +141,12 @@ class AccountController {
      * detected from the file itself. This is what makes a single month removable.
      */
     @GetMapping("/{accountId}/statements")
-    @Operation(summary = "List imported statements",
-            description = "Returns all statements that have been imported into the account, with their date ranges")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "List of imported statements"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Account not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     List<StatementImportResponse> statements(@PathVariable UUID accountId) {
         ownedAccount(accountId);
         return imports.findByAccount(accountId).stream().map(StatementImportResponse::of).toList();
     }
 
     @GetMapping("/{accountId}/transactions")
-    @Operation(summary = "List account transactions",
-            description = "Returns all transactions in the account, ordered by booking date (newest first)")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "List of transactions"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Account not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     List<TransactionResponse> transactions(@PathVariable UUID accountId) {
         ownedAccount(accountId);
         return transactions.findByAccount_IdOrderByBookingDateDescCreatedAtDesc(accountId).stream()

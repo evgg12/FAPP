@@ -3,13 +3,6 @@ package com.fapp.api;
 import com.fapp.goal.SavingsGoal;
 import com.fapp.goal.SavingsGoalService;
 import com.fapp.money.Money;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Currency;
 import java.util.List;
@@ -34,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/users/{userId}/goals")
-@Tag(name = "Savings Goals", description = "Manage savings goals")
 class SavingsGoalController {
 
     private final SavingsGoalService goals;
@@ -44,14 +36,6 @@ class SavingsGoalController {
     }
 
     @PostMapping
-    @Operation(summary = "Create a savings goal")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Savings goal created",
-                    content = @Content(schema = @Schema(implementation = SavingsGoalResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials")
-    })
-    @SecurityRequirement(name = "basicAuth")
     ResponseEntity<SavingsGoalResponse> create(@PathVariable UUID userId,
                                                @Valid @RequestBody CreateSavingsGoalRequest request) {
         SavingsGoal created = goals.create(

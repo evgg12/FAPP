@@ -5,13 +5,6 @@ import com.fapp.transaction.Category;
 import com.fapp.transaction.CategorySource;
 import com.fapp.transaction.Transaction;
 import com.fapp.transaction.TransactionRepository;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/transactions")
-@Tag(name = "Transactions", description = "Manage transaction categories")
 class TransactionController {
 
     private final TransactionRepository transactions;
@@ -48,16 +40,6 @@ class TransactionController {
 
     @PatchMapping("/{transactionId}/category")
     @Transactional
-    @Operation(summary = "Recategorize a transaction",
-            description = "Updates the category for a transaction. Also updates the category for all other transactions with the same description.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Transaction successfully recategorized",
-                    content = @Content(schema = @Schema(implementation = TransactionResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input or missing required field"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Transaction not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     TransactionResponse recategorise(@PathVariable UUID transactionId,
                                      @Valid @RequestBody RecategoriseTransactionRequest request) {
         Transaction transaction = transactions.findById(transactionId)

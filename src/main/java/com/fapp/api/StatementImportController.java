@@ -3,13 +3,6 @@ package com.fapp.api;
 import com.fapp.security.CurrentUser;
 import com.fapp.statement.StatementImport;
 import com.fapp.statement.StatementImportRepository;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/imports")
-@Tag(name = "Statement Imports", description = "Retrieve and manage statement imports")
 class StatementImportController {
 
     private final StatementImportRepository statementImports;
@@ -36,15 +28,6 @@ class StatementImportController {
     }
 
     @GetMapping("/{importId}")
-    @Operation(summary = "Get statement import details",
-            description = "Retrieves details of a statement import, including the date range and transaction counts")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Import details",
-                    content = @Content(schema = @Schema(implementation = StatementImportResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Import not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     StatementImportResponse get(@PathVariable UUID importId) {
         StatementImport statementImport = statementImports.findByIdWithAccount(importId)
                 .orElseThrow(() -> new NotFoundException(
@@ -67,14 +50,6 @@ class StatementImportController {
      * first import rather than being rejected as already held.
      */
     @DeleteMapping("/{importId}")
-    @Operation(summary = "Delete a statement import",
-            description = "Permanently removes a statement import and all transactions it produced. The same file can be re-imported afterward.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Import successfully deleted"),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
-            @ApiResponse(responseCode = "404", description = "Import not found")
-    })
-    @SecurityRequirement(name = "basicAuth")
     ResponseEntity<Void> delete(@PathVariable UUID importId) {
         statementImports.delete(owned(importId));
         return ResponseEntity.noContent().build();

@@ -28,7 +28,6 @@ import { SignInScreen } from './components/SignInScreen'
 import { StatementUpload } from './components/StatementUpload'
 import { SummaryPanel } from './components/SummaryPanel'
 import { TransactionList } from './components/TransactionList'
-import { TransactionLookup } from './components/TransactionLookup'
 
 const ACCOUNT_KEY = 'fapp.accountId'
 const THEME_KEY = 'fapp.theme'
@@ -189,8 +188,6 @@ export default function App() {
     [userId, pinnedVersion],
   )
   const pinnedIdSet = useMemo(() => new Set(pinnedIds.data ?? []), [pinnedIds.data])
-
-  const [lookupName, setLookupName] = useState<string | null>(null)
 
   if (!userId) {
     if (checkingSession) {
@@ -388,7 +385,6 @@ export default function App() {
               pinnedIds={pinnedIdSet}
               onPinChanged={bumpPinned}
               onCategoryChanged={() => setDataVersion((version) => version + 1)}
-              onMerchantClick={setLookupName}
             />
           </>
         )}
@@ -402,7 +398,6 @@ export default function App() {
             pinnedIds={pinnedIdSet}
             onPinChanged={bumpPinned}
             onCategoryChanged={() => setDataVersion((version) => version + 1)}
-            onMerchantClick={setLookupName}
           />
         )}
 
@@ -459,19 +454,6 @@ export default function App() {
               onSelectAccount={setAccountId}
             />
           </>
-        )}
-
-        {lookupName && (
-          <TransactionLookup
-            state={transactions}
-            accountSelected={(accounts.data?.length ?? 0) > 0}
-            userId={userId}
-            pinnedIds={pinnedIdSet}
-            onPinChanged={bumpPinned}
-            searchQuery={lookupName}
-            onClose={() => setLookupName(null)}
-            isModal
-          />
         )}
 
       </main>

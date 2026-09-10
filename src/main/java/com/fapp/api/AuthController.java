@@ -2,13 +2,6 @@ package com.fapp.api;
 
 import com.fapp.security.CurrentUser;
 import com.fapp.user.UserRepository;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Authentication", description = "Verify authentication credentials and retrieve authenticated user info")
 class AuthController {
 
     private final CurrentUser currentUser;
@@ -35,14 +27,6 @@ class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Get authenticated user info",
-            description = "Verifies the authentication credentials are valid and returns the authenticated user's information")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successfully authenticated, returns user details",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials")
-    })
-    @SecurityRequirement(name = "basicAuth")
     UserResponse me() {
         return users.findById(currentUser.requireId())
                 .map(UserResponse::of)

@@ -27,7 +27,6 @@ export function TransactionList({
   pinnedIds = new Set(),
   onPinChanged = () => {},
   onCategoryChanged,
-  onMerchantClick,
 }: {
   state: AsyncState<Transaction[]>
   accountSelected: boolean
@@ -38,7 +37,6 @@ export function TransactionList({
   pinnedIds?: Set<string>
   onPinChanged?: () => void
   onCategoryChanged?: () => void
-  onMerchantClick?: (name: string) => void
 }) {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -113,14 +111,7 @@ export function TransactionList({
                             {day(transaction.bookingDate)}
                           </td>
                           <td data-label="Description">
-                            <button
-                              type="button"
-                              className="transaction-name-link"
-                              onClick={() => onMerchantClick?.(transaction.merchant ?? transaction.description)}
-                              title={`Look up all transactions with ${transaction.merchant ?? transaction.description}`}
-                            >
-                              {transaction.merchant ?? transaction.description}
-                            </button>
+                            {transaction.merchant ?? transaction.description}
                             {transaction.originalAmount !== undefined && (
                               <span className="muted">
                                 {' '}
