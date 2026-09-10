@@ -4,6 +4,13 @@ import com.fapp.account.AccountRepository;
 import com.fapp.security.CurrentUser;
 import com.fapp.user.User;
 import com.fapp.user.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/users")
+@Tag(name = "Users", description = "User registration and retrieval")
 class UserController {
 
     private final UserRepository users;
@@ -43,6 +51,14 @@ class UserController {
     }
 
     @PostMapping
+    @Operation(summary = "Register a new user",
+            description = "Creates a new user account. The password is hashed and never returned.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User successfully created",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input or validation failed"),
+            @ApiResponse(responseCode = "409", description = "User with this email already exists")
+    })
     ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
         User user = User.of(request.email(), request.displayName());
         // Hashed here and never held: the plaintext exists only for the length of this
@@ -56,6 +72,16 @@ class UserController {
     }
 
     @GetMapping("/{userId}")
+    @Operation(summary = "Get user by ID",
+            description = "Retrieves a user's information. Only the user themselves can retrieve their own info.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User found",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
+            @ApiResponse(responseCode = "403", description = "Accessing another user's information"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @SecurityRequirement(name = "basicAuth")
     UserResponse get(@PathVariable UUID userId) {
         currentUser.requireSelf(userId);
         return users.findById(userId)
@@ -71,6 +97,14 @@ class UserController {
      * for this, which meant asking for a list required inventing a date range.
      */
     @GetMapping("/{userId}/accounts")
+    @Operation(summary = "List user's accounts",
+            description = "Returns all accounts belonging to the user, ordered by provider and display name")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of user's accounts"),
+            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @SecurityRequirement(name = "basicAuth")
     List<AccountResponse> accounts(@PathVariable UUID userId) {
         if (!users.existsById(userId)) {
             throw new NotFoundException("USER_NOT_FOUND", "no user with id " + userId);

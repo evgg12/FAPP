@@ -1661,3 +1661,126 @@ th {
     max-width: 100%;
   }
 }
+
+/* ---------- Transaction Lookup ---------- */
+
+.lookup-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.lookup-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.lookup-header {
+  padding-block: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+
+.lookup-header h3 {
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.lookup-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+
+.summary-card {
+  background: var(--glass-sheen), var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.summary-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.summary-count {
+  font-size: 0.8rem;
+}
+
+.lookup-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.lookup-section h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0;
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+
+.lookup-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: var(--s4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.lookup-modal-wrapper {
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: var(--radius);
+}
+
+.lookup-modal-content {
+  margin: 0;
+}
+
+/* Clickable transaction names */
+.transaction-name-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.transaction-name-link:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+.transaction-name-link:active {
+  color: var(--ink);
+}
