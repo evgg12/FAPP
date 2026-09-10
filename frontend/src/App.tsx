@@ -30,6 +30,7 @@ import { SummaryPanel } from './components/SummaryPanel'
 import { TransactionList } from './components/TransactionList'
 
 const ACCOUNT_KEY = 'fapp.accountId'
+const THEME_KEY = 'fapp.theme'
 
 type View = 'dashboard' | 'transactions' | 'goals' | 'accounts'
 
@@ -61,12 +62,23 @@ export default function App() {
   const [checkingSession, setCheckingSession] = useState(() => currentEmail() !== null)
   const [view, setView] = useState<View>('dashboard')
   const [accountId, setAccountId] = useState<string | null>(() => localStorage.getItem(ACCOUNT_KEY))
-  const [scale, setScale] = useState<PeriodScale>('month')
+  const [scale, setScale] = useState<PeriodScale>('year')
   const [month, setMonth] = useState(() => currentYearMonth())
-  const [range, setRange] = useState<DateRange>(() => scaleRange('month'))
+  const [range, setRange] = useState<DateRange>(() => scaleRange('year'))
   // Bumped after an import or a recategorisation so every panel reloads.
   const [dataVersion, setDataVersion] = useState(0)
   const [creatingAccount, setCreatingAccount] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    () => (localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null) ?? 'light',
+  )
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem(THEME_KEY, theme)
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme === 'dark' ? '#0d1117' : '#ffffff')
+  }, [theme])
 
   // Credentials survive a reload within the tab, so the session is re-established
   // rather than making the user sign in again.
@@ -151,9 +163,20 @@ export default function App() {
     [userId, accountId, dataVersion],
   )
 
+  // With no account selected, every account's transactions are fetched and merged so
+  // "All accounts" shows one combined list instead of asking for a single account.
   const transactions = useAsync(
-    accountId ? () => api.transactions(accountId) : null,
-    [accountId, dataVersion],
+    accountId
+      ? () => api.transactions(accountId)
+      : accounts.data
+        ? () =>
+            Promise.all(
+              accounts.data!.map((a) =>
+                api.transactions(a.accountId).then((list) => list.map((t) => ({ ...t, provider: a.provider }))),
+              ),
+            ).then((lists) => lists.flat())
+        : null,
+    [accountId, dataVersion, accounts.data],
   )
 
   // Bumped by pinning or unpinning a transaction anywhere, and by any pinned-group
@@ -200,39 +223,82 @@ export default function App() {
             </div>
             <div className="whoami">
               <span className="whoami-email">{email}</span>
-              <button
-                type="button"
-                className="btn-quiet"
-                onClick={() => {
-                  clearCredentials()
-                  setEmail(null)
-                  setUserId(null)
-                  setAccountId(null)
-                  setView('dashboard')
-                }}
-              >
-                Sign out
-              </button>
+              <div className="whoami-actions">
+                <button
+                  type="button"
+                  className="btn-quiet"
+                  onClick={() => {
+                    clearCredentials()
+                    setEmail(null)
+                    setUserId(null)
+                    setAccountId(null)
+                    setView('dashboard')
+                  }}
+                >
+                  Sign out
+                </button>
+                <button
+                  type="button"
+                  className="btn-icon-plain"
+                  aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                  onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+                >
+                  {theme === 'dark' ? (
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                      <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                        <line x1="12" y1="1.5" x2="12" y2="4" />
+                        <line x1="12" y1="20" x2="12" y2="22.5" />
+                        <line x1="1.5" y1="12" x2="4" y2="12" />
+                        <line x1="20" y1="12" x2="22.5" y2="12" />
+                        <line x1="4.4" y1="4.4" x2="6.1" y2="6.1" />
+                        <line x1="17.9" y1="17.9" x2="19.6" y2="19.6" />
+                        <line x1="4.4" y1="19.6" x2="6.1" y2="17.9" />
+                        <line x1="17.9" y1="6.1" x2="19.6" y2="4.4" />
+                      </g>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                      <path
+                        d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5Z"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-          <nav aria-label="Sections">
-            <ul className="tabs">
-              {VIEWS.map((item) => (
-                <li key={item.view}>
-                  <button
-                    type="button"
-                    className="tab"
-                    aria-current={view === item.view ? 'page' : undefined}
-                    onClick={() => setView(item.view)}
-                  >
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </div>
       </header>
+
+      {/*
+        Deliberately not nested inside `.topbar`: that header has `backdrop-filter`,
+        which creates a containing block for `position: fixed` descendants -- a bottom
+        tab bar nested inside it would anchor to the header's box instead of the
+        viewport, on the phone width where `.tabs` switches to fixed.
+      */}
+      <nav aria-label="Sections" className="navbar">
+        <div className="topbar-inner">
+          <ul className="tabs">
+            {VIEWS.map((item) => (
+              <li key={item.view}>
+                <button
+                  type="button"
+                  className="tab"
+                  aria-current={view === item.view ? 'page' : undefined}
+                  onClick={() => setView(item.view)}
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
 
       {(showAccountControl || showPeriodControl) && (
         <div className="toolbar">
@@ -313,7 +379,7 @@ export default function App() {
             />
             <TransactionList
               state={transactions}
-              accountSelected={accountId !== null}
+              accountSelected={(accounts.data?.length ?? 0) > 0}
               limit={8}
               userId={userId}
               pinnedIds={pinnedIdSet}
@@ -326,7 +392,8 @@ export default function App() {
         {view === 'transactions' && (
           <TransactionList
             state={transactions}
-            accountSelected={accountId !== null}
+            accountSelected={(accounts.data?.length ?? 0) > 0}
+            showBank={accountId === null}
             userId={userId}
             pinnedIds={pinnedIdSet}
             onPinChanged={bumpPinned}

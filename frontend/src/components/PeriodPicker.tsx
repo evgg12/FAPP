@@ -42,36 +42,32 @@ export function PeriodPicker({
         ))}
       </ul>
       {scale === 'month' ? (
-        <>
-          <label>
-            Month
-            <select
-              value={monthNumber}
-              aria-label="Month"
-              onChange={(e) => onChange('month', `${year}-${e.target.value}`)}
-            >
-              {MONTH_NAMES.map((name, index) => (
-                <option key={name} value={String(index + 1).padStart(2, '0')}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Year
-            <select
-              value={year}
-              aria-label="Year"
-              onChange={(e) => onChange('month', `${e.target.value}-${monthNumber}`)}
-            >
-              {years.map((option) => (
-                <option key={option} value={String(option)}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-        </>
+        <div className="period-select-group">
+          <select
+            className="period-select"
+            value={monthNumber}
+            aria-label="Month"
+            onChange={(e) => onChange('month', `${year}-${e.target.value}`)}
+          >
+            {MONTH_NAMES.map((name, index) => (
+              <option key={name} value={String(index + 1).padStart(2, '0')}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="period-select"
+            value={year}
+            aria-label="Year"
+            onChange={(e) => onChange('month', `${e.target.value}-${monthNumber}`)}
+          >
+            {years.map((option) => (
+              <option key={option} value={String(option)}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
       ) : (
         <p className="muted">
           {day(range.from)} to {day(range.to)} (exclusive)

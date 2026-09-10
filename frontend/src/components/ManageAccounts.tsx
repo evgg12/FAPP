@@ -165,35 +165,31 @@ function AccountStatement({
     <div className="stack">
       <span className="figure-label">Statement period</span>
       {error && <ErrorNotice error={error} />}
-      <div className="row row-tight">
-        <label>
-          Month
-          <select
-            value={monthNumber}
-            aria-label="Statement month"
-            onChange={(e) => chooseMonth(`${year}-${e.target.value}`)}
-          >
-            {MONTH_NAMES.map((name, index) => (
-              <option key={name} value={String(index + 1).padStart(2, '0')}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Year
-          <select
-            value={year}
-            aria-label="Statement year"
-            onChange={(e) => chooseMonth(`${e.target.value}-${monthNumber}`)}
-          >
-            {years.map((option) => (
-              <option key={option} value={String(option)}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="period-select-group">
+        <select
+          className="period-select"
+          value={monthNumber}
+          aria-label="Statement month"
+          onChange={(e) => chooseMonth(`${year}-${e.target.value}`)}
+        >
+          {MONTH_NAMES.map((name, index) => (
+            <option key={name} value={String(index + 1).padStart(2, '0')}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="period-select"
+          value={year}
+          aria-label="Statement year"
+          onChange={(e) => chooseMonth(`${e.target.value}-${monthNumber}`)}
+        >
+          {years.map((option) => (
+            <option key={option} value={String(option)}>
+              {option}
+            </option>
+          ))}
+        </select>
       </div>
       <Async state={summary} empty="Nothing for this period." lines={1}>
         {(figures) => (

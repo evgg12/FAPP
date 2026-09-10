@@ -149,7 +149,7 @@ class AccountController {
     @GetMapping("/{accountId}/transactions")
     List<TransactionResponse> transactions(@PathVariable UUID accountId) {
         ownedAccount(accountId);
-        return transactions.findByAccount_IdOrderByBookingDateAscCreatedAtAsc(accountId).stream()
+        return transactions.findByAccount_IdOrderByBookingDateDescCreatedAtDesc(accountId).stream()
                 .map(TransactionResponse::of)
                 .toList();
     }

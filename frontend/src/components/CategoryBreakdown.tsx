@@ -18,7 +18,13 @@ export function CategoryBreakdown({ state }: { state: AsyncState<CategorySummary
         <h2>By category</h2>
       </div>
       <Async state={state} empty="No categorised spending in this period." lines={5}>
-        {(categories) => {
+        {(allCategories) => {
+          // Income dwarfs every spending category's bar next to it -- it already has
+          // its own place in Summary, so this section is spending-only.
+          const categories = allCategories.filter((c) => c.category !== 'INCOME')
+          if (categories.length === 0) {
+            return <p className="empty">No categorised spending in this period.</p>
+          }
           const largest = Math.max(...categories.map((c) => Math.max(c.expenditure, c.income)))
           return (
             <ul className="bars">

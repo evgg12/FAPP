@@ -15,6 +15,7 @@ export function SignInScreen({ onSignedIn }: { onSignedIn: (userId: string) => v
   const [form, setForm] = useState({ email: '', displayName: '', password: '' })
   const [error, setError] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showForm, setShowForm] = useState(false)
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -39,66 +40,81 @@ export function SignInScreen({ onSignedIn }: { onSignedIn: (userId: string) => v
 
   return (
     <main className="signin">
+      <button
+        type="button"
+        className="signin-topbutton"
+        onClick={() => setShowForm(!showForm)}
+      >
+        Sign in
+      </button>
+
       <div className="signin-brand">
         <h1>FAPP</h1>
         <p className="signin-tagline">its never too late to</p>
+        {!showForm && (
+          <p className="signin-description">
+            FAPP is a personal finance analytics tool that helps you understand your spending patterns, track your accounts, and reach your savings goals. Import your bank statements and get actionable insights into your financial health.
+          </p>
+        )}
       </div>
 
-      <section className="panel signin-card">
-        <div className="panel-head">
-          <h2>{registering ? 'Create an account' : 'Sign in'}</h2>
-        </div>
-        {error && <ErrorNotice error={error} />}
-        <form onSubmit={submit} className="stack">
-          <label>
-            Email
-            <input
-              type="email"
-              value={form.email}
-              required
-              autoComplete="username"
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-          </label>
-          {registering && (
+      {showForm && (
+        <section className="panel signin-card">
+          <div className="panel-head">
+            <h2>{registering ? 'Create an account' : 'Sign in'}</h2>
+          </div>
+          {error && <ErrorNotice error={error} />}
+          <form onSubmit={submit} className="stack">
             <label>
-              Display name
+              Email
               <input
-                value={form.displayName}
+                type="email"
+                value={form.email}
                 required
-                onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                autoComplete="username"
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </label>
-          )}
-          <label>
-            Password
-            <input
-              type="password"
-              value={form.password}
-              required
-              minLength={registering ? 12 : undefined}
-              autoComplete={registering ? 'new-password' : 'current-password'}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-          </label>
-          {registering && (
-            <p className="muted">At least 12 characters.</p>
-          )}
-          <button type="submit" disabled={busy}>
-            {busy ? 'Working…' : registering ? 'Create account' : 'Sign in'}
+            {registering && (
+              <label>
+                Display name
+                <input
+                  value={form.displayName}
+                  required
+                  onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                />
+              </label>
+            )}
+            <label>
+              Password
+              <input
+                type="password"
+                value={form.password}
+                required
+                minLength={registering ? 12 : undefined}
+                autoComplete={registering ? 'new-password' : 'current-password'}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+            </label>
+            {registering && (
+              <p className="muted">At least 12 characters.</p>
+            )}
+            <button type="submit" disabled={busy}>
+              {busy ? 'Working…' : registering ? 'Create account' : 'Sign in'}
+            </button>
+          </form>
+          <button
+            type="button"
+            className="btn-quiet"
+            onClick={() => {
+              setError(null)
+              setRegistering(!registering)
+            }}
+          >
+            {registering ? 'I already have an account' : 'I need an account'}
           </button>
-        </form>
-        <button
-          type="button"
-          className="btn-quiet"
-          onClick={() => {
-            setError(null)
-            setRegistering(!registering)
-          }}
-        >
-          {registering ? 'I already have an account' : 'I need an account'}
-        </button>
-      </section>
+        </section>
+      )}
     </main>
   )
 }

@@ -26,8 +26,8 @@ describe('periods', () => {
     expect(monthRange('2026-12')).toEqual({ from: '2026-12-01', to: '2027-01-01' })
   })
 
-  it('offers exactly Month and Annual', () => {
-    expect(PERIOD_SCALES.map((option) => option.label)).toEqual(['Month', 'Annual'])
+  it('offers exactly Annual and Month, Annual first', () => {
+    expect(PERIOD_SCALES.map((option) => option.label)).toEqual(['Annual', 'Month'])
   })
 
   it('reads Annual as this year so far', () => {

@@ -37,11 +37,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                                                  @Param("description") String description);
 
     /**
-     * An account's transactions, oldest first, for reading back what was imported.
+     * An account's transactions, newest first, for reading back what was imported.
      * Ordered by the analytical date and then by insertion so that repeats of the same
      * day come back in a stable order.
      */
-    List<Transaction> findByAccount_IdOrderByBookingDateAscCreatedAtAsc(UUID accountId);
+    List<Transaction> findByAccount_IdOrderByBookingDateDescCreatedAtDesc(UUID accountId);
 
     /**
      * Which of a statement's transaction ids this account already holds. The bank's own

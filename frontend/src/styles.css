@@ -3,31 +3,50 @@
  * the media queries widen it, so the small screen is never an afterthought fixed up
  * with overrides.
  *
- * Restrained on purpose. This is a page for reading financial figures, so the palette
- * is neutral with a single accent, and colour carries only one meaning: money in is
- * green, money out is red.
+ * Liquid glass, turned up on purpose: layered translucent surfaces with real depth
+ * (blur, saturation, soft shadows) rather than a flat tint. Colour still carries only
+ * one meaning on top of that: money in is green, money out is red.
  */
 
 :root {
   /* Ink */
-  --ink: #14171c;
-  --ink-soft: #444c59;
-  --muted: #6b7382;
+  --ink: #101425;
+  --ink-soft: #454b63;
+  --muted: #6b7189;
+
+  /* Ambient backdrop the glass sits above */
+  --bg-a: #eef1fb;
+  --bg-b: #e4e9fb;
+  --bg-c: #fbeef6;
 
   /* Surfaces */
-  --page: #f4f5f7;
+  --page: #eef0f8;
   --panel: #ffffff;
-  --sunken: #f0f2f5;
-  --line: #e2e6ec;
-  --line-strong: #cfd5df;
+  --sunken: #f1f2fa;
+  --line: #dfe2f0;
+  --line-strong: #c7cce3;
+
+  /* Glass */
+  --glass-fill: rgba(255, 255, 255, 0.42);
+  --glass-fill-strong: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-fill-soft: rgba(255, 255, 255, 0.28);
+  --glass-blur: 34px;
+  --glass-sheen: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.08) 32%,
+    rgba(255, 255, 255, 0) 60%
+  );
 
   /* Meaning */
-  --in: #1a6f47;
-  --in-soft: #e8f3ed;
-  --out: #a92e28;
-  --out-soft: #fbeeed;
-  --accent: #24457f;
-  --accent-soft: #eef2f9;
+  --in: #0c8a55;
+  --in-soft: #e3f6ec;
+  --out: #d1352c;
+  --out-soft: #fdeceb;
+  --accent: #3b57e0;
+  --accent-2: #8b3fe0;
+  --accent-soft: #ecefff;
 
   /* Spacing scale. Every gap in the app is one of these. */
   --s1: 0.25rem;
@@ -37,12 +56,51 @@
   --s5: 1.5rem;
   --s6: 2rem;
 
-  --radius: 10px;
-  --radius-sm: 7px;
-  --shadow: 0 1px 2px rgba(20, 23, 28, 0.04), 0 1px 3px rgba(20, 23, 28, 0.06);
+  --radius: 20px;
+  --radius-sm: 14px;
+  --shadow: 0 1px 2px rgba(16, 20, 37, 0.03), 0 6px 18px rgba(16, 20, 37, 0.05);
+  --shadow-lift: 0 8px 24px rgba(16, 20, 37, 0.07);
 
   /* Comfortable minimum for anything a thumb has to hit. */
   --touch: 2.75rem;
+
+  /* Reserved so mobile layout can clear the fixed bottom nav / home-indicator area. */
+  --bottom-nav-h: 4.75rem;
+}
+
+[data-theme="dark"] {
+  --ink: #e6edf3;
+  --ink-soft: #c9d1d9;
+  --muted: #8b949e;
+
+  --bg-a: #0d1117;
+  --bg-b: #10151c;
+  --bg-c: #0d1117;
+
+  --page: #0d1117;
+  --panel: #161b22;
+  --sunken: #161b22;
+  --line: #30363d;
+  --line-strong: #3d444d;
+
+  --glass-fill: rgba(22, 27, 34, 0.46);
+  --glass-fill-strong: rgba(22, 27, 34, 0.68);
+  --glass-border: rgba(240, 246, 252, 0.14);
+  --glass-fill-soft: rgba(255, 255, 255, 0.03);
+  --glass-sheen: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0.008) 32%,
+    rgba(255, 255, 255, 0) 60%
+  );
+
+  --in: #3fb950;
+  --in-soft: rgba(63, 185, 80, 0.15);
+  --out: #f85149;
+  --out-soft: rgba(248, 81, 73, 0.15);
+  --accent: #58a6ff;
+  --accent-2: #a371f7;
+  --accent-soft: rgba(88, 166, 255, 0.15);
 }
 
 * {
@@ -56,10 +114,14 @@ html {
 
 body {
   margin: 0;
-  background: var(--page);
+  min-height: 100vh;
+  background-color: var(--page);
   color: var(--ink);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font:
+    16px/1.5 -apple-system, "SF Pro Display", "Segoe UI Variable", system-ui, Roboto,
+    "Helvetica Neue", sans-serif;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ---------- Typography ---------- */
@@ -68,20 +130,20 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 h1 {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
 }
 
 h2 {
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 h3 {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
 }
 
 p {
@@ -117,8 +179,11 @@ p {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
+  background: var(--glass-fill-strong);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow: 0 4px 16px rgba(20, 24, 40, 0.04);
 }
 
 .topbar-inner,
@@ -145,7 +210,7 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
-  min-height: 3.25rem;
+  min-height: 3.5rem;
 }
 
 .brand {
@@ -156,8 +221,9 @@ p {
 }
 
 .brand h1 {
-  font-size: 1.05rem;
-  letter-spacing: 0.04em;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  color: var(--accent);
 }
 
 .brand-sub {
@@ -179,6 +245,12 @@ p {
   min-width: 0;
 }
 
+.whoami-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
 .whoami-email {
   display: none;
   max-width: 14rem;
@@ -195,14 +267,68 @@ p {
   }
 }
 
-/* Tabs wrap onto a second line rather than scrolling sideways. */
+/*
+ * Sits below `.topbar` rather than sticky itself; kept free of backdrop-filter here
+ * (moved into the min-width query below) because `.tabs` inside it switches to
+ * `position: fixed` under 700px, and a filtered ancestor would hijack that fixed
+ * positioning to be relative to this box instead of the viewport.
+ */
+.navbar {
+  position: relative;
+  z-index: 15;
+}
+
+@media (min-width: 700px) {
+  .navbar {
+    background: var(--glass-fill-strong);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  }
+}
+
+/*
+ * On a phone the section tabs move to a fixed bottom bar (the native pattern for a
+ * primary-navigation surface on small screens) instead of wrapping under the brand row.
+ * Above the breakpoint they return to being an ordinary in-flow row under the topbar.
+ */
 .tabs {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--s1);
   list-style: none;
   margin: 0;
   padding: 0 0 var(--s2);
+}
+
+@media (max-width: 699px) {
+  .tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    padding: var(--s2) var(--s3) max(var(--s2), env(safe-area-inset-bottom));
+    margin: 0;
+    background: var(--glass-fill-strong);
+    border-top: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    box-shadow: 0 -4px 16px rgba(20, 24, 40, 0.05);
+    justify-content: center;
+    gap: var(--s2);
+  }
+
+  .tab {
+    flex: 0 1 5.5rem;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+    padding: var(--s1) var(--s1);
+  }
+
+  .foot {
+    display: none;
+  }
 }
 
 .tab {
@@ -216,23 +342,25 @@ p {
   min-height: var(--touch);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
 .tab:hover:not(:disabled) {
-  background: #eef4ff;
+  background: var(--accent-soft);
+  transform: translateY(-1px);
 }
 
 .tab[aria-current="page"] {
   background: var(--accent-soft);
-  border-color: #cdd8ea;
+  border-color: var(--line-strong);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .toolbar {
   position: relative;
   z-index: 10;
-  background: var(--page);
+  background: transparent;
   border-bottom: 1px solid var(--line);
   padding-block: var(--s3);
 }
@@ -245,9 +373,17 @@ p {
   gap: var(--s4);
 }
 
+@media (max-width: 699px) {
+  /* Room at the foot of the page so content never sits under the fixed bottom tab
+     bar, with a clear gap above it rather than butting straight up against it. */
+  .main {
+    padding-bottom: calc(var(--bottom-nav-h) + var(--s6) + var(--s6));
+  }
+}
+
 .foot {
   border-top: 1px solid var(--line);
-  background: var(--panel);
+  background: transparent;
 }
 
 .foot-inner {
@@ -257,17 +393,18 @@ p {
 /* ---------- Panels ---------- */
 
 .panel {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: var(--glass-sheen), var(--glass-fill);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  box-shadow: 0 8px 30px rgba(30, 55, 90, 0.08);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   padding: var(--s4);
   display: flex;
   flex-direction: column;
   gap: var(--s3);
   min-width: 0;
+  position: relative;
 }
 
 .panel-head {
@@ -315,11 +452,17 @@ p {
  * A stack that must fill exactly the height its sibling grid column ends up needing
  * (a plain grid item stretches to that height by default) and split it evenly between
  * its two panels, instead of sizing to its own content and leaving the two columns
- * misaligned or one shorter than the other.
+ * misaligned or one shorter than the other. Only meaningful once `.grid-2` actually
+ * makes columns siblings with a shared height to stretch into (900px+) -- below that
+ * each stack sizes to its own content, so forcing flex-basis 0 here would give the
+ * panels nothing to grow into and collapse them, spilling their content over whatever
+ * comes next.
  */
-.stack-fill > .panel {
-  flex: 1 1 0;
-  min-height: 0;
+@media (min-width: 900px) {
+  .stack-fill > .panel {
+    flex: 1 1 0;
+    min-height: 0;
+  }
 }
 
 .row {
@@ -350,7 +493,7 @@ label {
   flex-direction: column;
   gap: var(--s1);
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-soft);
   min-width: 0;
 }
@@ -364,10 +507,13 @@ select {
   padding: var(--s2) var(--s3);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  background: var(--panel);
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--ink);
   min-width: 0;
   max-width: 100%;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 input[type="file"] {
@@ -380,6 +526,124 @@ select:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+input:focus-visible,
+select:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Plain select, no label text, styled to sit as a glass pill among the scale chips. */
+.period-select-group {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.period-select {
+  appearance: none;
+  min-height: var(--touch);
+  height: var(--touch);
+  padding: 0 var(--s5) 0 var(--s3);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background-color: var(--glass-fill-strong);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) center,
+    calc(100% - 13px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.period-select:hover {
+  background-color: var(--panel);
+}
+
+/*
+ * The transactions search box: same glass pill language as `.period-select`. Full
+ * width on a phone (the section it sits above is the whole screen's width); a
+ * reasonable fixed width on desktop, sitting at the top-left of the panel above the
+ * table rather than stretching the full panel width.
+ */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0 var(--s4);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow: var(--shadow);
+  color: var(--muted);
+}
+
+.search-bar svg {
+  flex: 0 0 auto;
+}
+
+.search-bar input {
+  flex: 1;
+  min-width: 0;
+  min-height: auto;
+  border: none;
+  background: none;
+  padding: var(--s2) 0;
+  color: var(--ink);
+}
+
+.search-bar input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+@media (min-width: 700px) {
+  .search-bar {
+    width: 22rem;
+  }
+}
+
+/*
+ * Prev/Next below a paginated table, same glass pill language as the rest of the app
+ * but compact -- small buttons, tight gap, sitting right under the row count instead
+ * of leaving a full section-sized gap beneath it.
+ */
+.transaction-list-foot {
+  gap: var(--s2);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow: var(--shadow);
+  align-self: center;
+}
+
+.pagination .btn-quiet {
+  min-height: auto;
+  padding: var(--s1) var(--s2);
+  font-size: 0.8125rem;
 }
 
 /* Forms are a single column by default; they only become a row when there is room. */
@@ -399,40 +663,30 @@ button:focus-visible {
 button {
   font: inherit;
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   min-height: var(--touch);
   padding: var(--s2) var(--s4);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: rgba(49, 83, 140, 0.82);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 6px 20px rgba(30, 55, 90, 0.14);
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(16, 20, 37, 0.08);
   color: #fff;
   cursor: pointer;
   white-space: nowrap;
-  backdrop-filter: blur(18px) saturate(135%);
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
-    background 160ms ease;
+    filter 160ms ease;
 }
 
 button:hover:not(:disabled) {
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.48),
-      rgba(76, 116, 181, 0.82) 45%,
-      rgba(49, 83, 140, 0.9)
-    );
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.7),
-    inset 0 -1px 1px rgba(18, 38, 72, 0.16),
-    0 8px 22px rgba(30, 55, 90, 0.2);
+  filter: brightness(1.08);
+  box-shadow: 0 6px 16px rgba(16, 20, 37, 0.1);
   transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 button:disabled {
@@ -441,23 +695,27 @@ button:disabled {
 }
 
 .btn-quiet {
-  background: var(--panel);
+  background: var(--glass-fill-strong);
   border-color: var(--line-strong);
   color: var(--ink);
+  box-shadow: var(--shadow);
 }
 
 .btn-quiet:hover:not(:disabled) {
-  background: var(--sunken);
+  background: var(--panel);
+  filter: none;
 }
 
 .btn-danger {
-  background: var(--panel);
-  border-color: #e2bab7;
+  background: var(--glass-fill-strong);
+  border-color: #f0c4c0;
   color: var(--out);
+  box-shadow: var(--shadow);
 }
 
 .btn-danger:hover:not(:disabled) {
   background: var(--out-soft);
+  filter: none;
 }
 
 .btn-wide {
@@ -486,7 +744,7 @@ button:disabled {
 }
 
 .btn-star-active {
-  color: #c9971f;
+  color: #d19a1f;
 }
 
 .btn-star-active:hover:not(:disabled) {
@@ -496,7 +754,7 @@ button:disabled {
 /* A small round icon-only trigger, for an action that must not compete for space with a heading row. */
 .btn-icon {
   background: var(--accent-soft);
-  border: 1px solid #cdd8ea;
+  border: 1px solid #cdd4f5;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -510,8 +768,32 @@ button:disabled {
 }
 
 .btn-icon:hover:not(:disabled) {
-  background: #dde6f5;
+  background: #dfe3fb;
   transform: none;
+  filter: none;
+}
+
+/* Icon only, fully transparent -- just the sun/moon outline, under Sign out. */
+.btn-icon-plain {
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--muted);
+  min-height: auto;
+  min-width: auto;
+  padding: var(--s1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon-plain:hover:not(:disabled) {
+  background: none;
+  filter: none;
+  transform: none;
+  color: var(--ink);
 }
 
 @media (min-width: 620px) {
@@ -530,25 +812,33 @@ button:disabled {
 }
 
 .chip {
-  background: var(--panel);
-  border: 1px solid var(--line-strong);
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-border);
   color: var(--ink);
   font-size: 0.875rem;
-  font-weight: 400;
+  font-weight: 500;
   padding: var(--s2) var(--s3);
   border-radius: 999px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .chip:hover:not(:disabled) {
-  background: var(--sunken);
+  background: var(--panel);
 }
 
 .chip-on,
 .chip-on:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* The bank-name suffix inside a chip stays legible against the solid accent fill. */
+.chip-on .muted {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ---------- Figures ---------- */
@@ -579,31 +869,35 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: var(--s1);
-  padding: var(--s3);
-  background: rgba(226, 228, 232, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  padding: var(--s4) var(--s3);
+  background: var(--glass-sheen), var(--glass-fill);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -1px 0 rgba(180, 185, 195, 0.12),
-    0 6px 18px rgba(30, 35, 45, 0.07);
-  backdrop-filter: blur(18px) saturate(115%);
-  -webkit-backdrop-filter: blur(18px) saturate(115%);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   min-width: 0;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.figure:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
 }
 
 .figure-label {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--muted);
   text-align: center;
 }
 
 .figure-value {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   text-align: center;
   overflow-wrap: anywhere;
@@ -611,7 +905,7 @@ button:disabled {
 
 @media (min-width: 760px) {
   .figure-value {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
   }
 }
 
@@ -635,7 +929,7 @@ button:disabled {
 }
 
 .bar-head > span:first-child {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .bar-track {
@@ -646,12 +940,14 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  box-shadow: inset 0 1px 2px rgba(16, 20, 37, 0.06);
 }
 
 .bar-fill {
-  height: 6px;
+  height: 7px;
   border-radius: 999px;
   min-width: 2px;
+  transition: width 240ms ease;
 }
 
 .bar-out {
@@ -664,7 +960,7 @@ button:disabled {
 
 .bar-goal {
   background: var(--accent);
-  height: 10px;
+  height: 11px;
 }
 
 /* ---------- Chart ---------- */
@@ -698,8 +994,9 @@ button:disabled {
 .chart-net {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 .chart-net-dot {
@@ -795,10 +1092,10 @@ td {
 }
 
 th {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -826,12 +1123,20 @@ th {
     display: none;
   }
 
+  /*
+   * No backdrop-filter here (unlike the rest of the glass surfaces): it would make
+   * every card its own stacking context, and a `.pin-popover` opened inside one card
+   * could then never paint above a later card, regardless of z-index -- the exact
+   * "popup gets hidden behind the next transaction" bug. The panel behind these rows
+   * still carries its own blur, so the row itself only needs a solid-ish fill.
+   */
   table.cards tr {
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    padding: var(--s2) var(--s3);
+    padding: var(--s3);
     margin-bottom: var(--s2);
-    background: var(--panel);
+    background: var(--glass-fill-strong);
+    box-shadow: var(--shadow);
   }
 
   table.cards td {
@@ -840,17 +1145,17 @@ th {
     align-items: baseline;
     gap: var(--s3);
     border: 0;
-    padding: 2px 0;
+    padding: 3px 0;
     text-align: left;
   }
 
   table.cards td::before {
     content: attr(data-label);
     flex: 0 0 auto;
-    font-size: 0.72rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     color: var(--muted);
   }
 
@@ -860,7 +1165,7 @@ th {
 
   /* The first cell of a card reads as its heading. */
   table.cards td.card-title {
-    font-weight: 600;
+    font-weight: 700;
     padding-bottom: var(--s1);
   }
 }
@@ -878,10 +1183,12 @@ th {
   display: flex;
   flex-direction: column;
   gap: var(--s1);
-  padding: var(--s3);
+  padding: var(--s3) var(--s4);
   border-radius: var(--radius-sm);
   font-size: 0.9rem;
   overflow-wrap: anywhere;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .notice strong {
@@ -891,20 +1198,20 @@ th {
 }
 
 .notice-error {
-  background: var(--out-soft);
-  border: 1px solid #eec9c6;
-  color: #7c211c;
+  background: rgba(253, 236, 235, 0.85);
+  border: 1px solid #f2c9c5;
+  color: #8a251d;
 }
 
 .notice-ok {
-  background: var(--in-soft);
-  border: 1px solid #c3e0d1;
-  color: #14563a;
+  background: rgba(227, 246, 236, 0.85);
+  border: 1px solid #bfe6cf;
+  color: #0e6b40;
 }
 
 .notice-info {
-  background: var(--accent-soft);
-  border: 1px solid #cdd8ea;
+  background: rgba(236, 239, 255, 0.85);
+  border: 1px solid #ccd3f7;
   color: var(--accent);
 }
 
@@ -924,7 +1231,7 @@ th {
 .skeleton-line {
   height: 0.75rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--sunken), #e6e9ee, var(--sunken));
+  background: linear-gradient(90deg, var(--sunken), var(--line), var(--sunken));
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
@@ -962,9 +1269,8 @@ th {
   justify-content: center;
   padding: var(--s4);
   gap: var(--s4);
-  background:
-    radial-gradient(circle at 50% 20%, rgba(214, 230, 250, 0.75), transparent 42%),
-    linear-gradient(135deg, #eef5fc 0%, #e5eef9 100%);
+  background: var(--page);
+  position: relative;
 }
 
 .signin-card {
@@ -980,7 +1286,8 @@ th {
   margin: 0;
   font-size: 3.5rem;
   line-height: 1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  color: var(--accent);
 }
 
 .signin-tagline {
@@ -991,25 +1298,45 @@ th {
   letter-spacing: 0.02em;
 }
 
+.signin-topbutton {
+  position: absolute;
+  top: var(--s4);
+  right: var(--s4);
+  padding: var(--s2) var(--s4);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.signin-description {
+  margin: var(--s5) 0 0;
+  max-width: 32rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
 /* ---------- Goals ---------- */
 
 .goal {
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: var(--s3);
   display: flex;
   flex-direction: column;
   gap: var(--s2);
+  background: var(--glass-fill-soft);
 }
 
 /* Same card language as .goal, for a pinned group in the compact Pinned panel. */
 .pinned-group-card {
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: var(--s3);
   display: flex;
   flex-direction: column;
   gap: var(--s2);
+  background: var(--glass-fill-soft);
 }
 
 /*
@@ -1085,13 +1412,39 @@ th {
   padding: 0;
 }
 
+/* Pushes a pinned transaction's amount right until it sits snug next to its
+   Unpin/Remove button, leaving the transaction name and its box untouched. */
+.pin-amount {
+  margin-left: auto;
+  margin-right: var(--s2);
+}
+
+/*
+ * A long transaction name previously wrapped the whole `.spread` row onto two lines,
+ * shoving the amount and Unpin/Remove button down below it. Keeping this row on one
+ * line and letting the name itself truncate (rather than the row wrap) keeps the
+ * amount and button anchored in place regardless of name length.
+ */
+.pin-entry {
+  flex-wrap: nowrap;
+}
+
+.pin-entry-name {
+  flex: 0 1 auto;
+  max-width: 55%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .badge {
   display: inline-block;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 2px var(--s2);
+  padding: 3px var(--s2);
   border-radius: 999px;
   background: var(--in-soft);
   color: var(--in);
@@ -1117,7 +1470,8 @@ th {
 }
 
 .compare-col {
-  background: var(--sunken);
+  background: var(--glass-fill-soft);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: var(--s3);
   display: flex;
@@ -1141,7 +1495,7 @@ th {
 
 .kv > span:last-child {
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* ---------- Inline forms (in place of a modal) ---------- */
@@ -1151,7 +1505,8 @@ th {
   flex-direction: column;
   gap: var(--s3);
   padding: var(--s3);
-  background: var(--sunken);
+  background: var(--glass-fill-soft);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
 }
 
@@ -1178,14 +1533,16 @@ th {
   position: absolute;
   right: 0;
   top: 100%;
-  z-index: 5;
+  z-index: 35;
   margin-top: var(--s1);
   width: 16rem;
   max-width: min(16rem, calc(100vw - 2 * var(--s4)));
-  background: var(--panel);
-  border: 1px solid var(--line-strong);
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lift);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   padding: var(--s3);
   display: flex;
   flex-direction: column;
@@ -1198,7 +1555,9 @@ th {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(20, 23, 28, 0.45);
+  background: rgba(14, 17, 32, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1265,7 +1624,8 @@ th {
   justify-content: space-between;
   gap: var(--s2);
   font-size: 0.9rem;
-  background: var(--sunken);
+  background: var(--glass-fill-soft);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: var(--s2) var(--s3);
 }
@@ -1290,9 +1650,14 @@ th {
 }
 
 @media (max-width: 699px) {
-  /* In card mode the cell sits on the right of its label and needs the room. */
+  /*
+   * In card mode the cell sits on the right of its label. The 60% cap this used to
+   * carry clipped long category names (e.g. "Entertainment & Leisure") before they
+   * could fully render -- dropping it lets the box grow to fit its text, still on
+   * the label's row and still right-aligned by the card's `justify-content: space-between`.
+   */
   .category-select {
     min-height: var(--touch);
-    max-width: 60%;
+    max-width: 100%;
   }
 }
