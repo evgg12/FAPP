@@ -98,6 +98,8 @@ export interface Transaction {
   categorySource: CategorySource
   transactionType: TransactionType
   externalId?: string
+  /** Attached client-side only, when transactions from several accounts are merged. */
+  provider?: string
 }
 
 /** `from` is inclusive, `to` is exclusive. Both are required by every analytics call. */

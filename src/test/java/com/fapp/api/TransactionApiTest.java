@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TransactionApiTest extends ApiTestSupport {
 
     @Test
-    void returnsAnAccountsTransactionsOldestFirst() throws Exception {
+    void returnsAnAccountsTransactionsNewestFirst() throws Exception {
         String accountId = importedMonzoAccount();
 
         MvcResult result = mockMvc.perform(get("/api/accounts/" + accountId + "/transactions"))
@@ -25,8 +25,8 @@ class TransactionApiTest extends ApiTestSupport {
                 .andReturn();
 
         JsonNode transactions = body(result);
-        assertThat(transactions.get(0).get("bookingDate").asText()).isEqualTo("2026-08-03");
-        assertThat(transactions.get(17).get("bookingDate").asText()).isEqualTo("2026-08-29");
+        assertThat(transactions.get(0).get("bookingDate").asText()).isEqualTo("2026-08-29");
+        assertThat(transactions.get(17).get("bookingDate").asText()).isEqualTo("2026-08-03");
     }
 
     @Test
@@ -43,7 +43,9 @@ class TransactionApiTest extends ApiTestSupport {
         assertThat(groceries.get("category").asText()).isEqualTo("GROCERIES");
         assertThat(groceries.get("categorySource").asText()).isEqualTo("ADAPTER");
         assertThat(groceries.get("transactionType").asText()).isEqualTo("CARD_PAYMENT");
-        assertThat(groceries.get("externalId").asText()).isEqualTo("tx_sample000000000000002");
+        // Two rows share this description (a repeat purchase); newest-first order means
+        // `find` lands on the later one.
+        assertThat(groceries.get("externalId").asText()).isEqualTo("tx_sample000000000000004");
 
         // Fingerprint and occurrence are import machinery, not part of the API.
         assertThat(groceries.has("fingerprint")).isFalse();

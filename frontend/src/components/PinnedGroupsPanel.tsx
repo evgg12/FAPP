@@ -183,16 +183,16 @@ function IndividualList({
           const expanded = openId === pin.transactionId
           return (
             <li key={pin.transactionId}>
-              <div className="spread">
+              <div className="spread pin-entry">
                 <button
                   type="button"
-                  className="btn-quiet"
+                  className="btn-quiet pin-entry-name"
                   onClick={() => setOpenId(expanded ? null : pin.transactionId)}
                   aria-expanded={expanded}
                 >
                   {day(pin.bookingDate)} · {name}
                 </button>
-                <span className={pin.amount < 0 ? 'tone-down' : 'tone-up'}>
+                <span className={`pin-amount ${pin.amount < 0 ? 'tone-down' : 'tone-up'}`}>
                   {money(pin.amount, pin.currency)}
                 </span>
                 <button
@@ -324,11 +324,11 @@ function PinnedGroupCard({
         ) : (
           <ul className="stack" aria-label={`Transactions in ${group.name}`}>
             {group.transactions.map((transaction) => (
-              <li key={transaction.transactionId} className="spread">
-                <span>
+              <li key={transaction.transactionId} className="spread pin-entry">
+                <span className="pin-entry-name">
                   {day(transaction.bookingDate)} · {transaction.merchant ?? transaction.description}
                 </span>
-                <span className={transaction.amount < 0 ? 'tone-down' : 'tone-up'}>
+                <span className={`pin-amount ${transaction.amount < 0 ? 'tone-down' : 'tone-up'}`}>
                   {money(transaction.amount, transaction.currency)}
                 </span>
                 <button

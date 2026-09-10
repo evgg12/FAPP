@@ -52,8 +52,8 @@ function isoDay(date: Date): string {
 export type PeriodScale = 'month' | 'year'
 
 export const PERIOD_SCALES: { scale: PeriodScale; label: string }[] = [
-  { scale: 'month', label: 'Month' },
   { scale: 'year', label: 'Annual' },
+  { scale: 'month', label: 'Month' },
 ]
 
 /** `2026-08`, the month a month picker starts on. */

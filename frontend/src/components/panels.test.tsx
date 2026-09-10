@@ -232,7 +232,7 @@ describe('transaction list', () => {
   it('asks for an account before showing anything', () => {
     render(<TransactionList state={{ loading: false }} accountSelected={false} userId="u1" />)
 
-    expect(screen.getByText('Select a single account to see its transactions.')).toBeTruthy()
+    expect(screen.getByText('Add an account under Accounts to see its transactions.')).toBeTruthy()
   })
 
   it('says so when the account has no transactions yet', () => {
