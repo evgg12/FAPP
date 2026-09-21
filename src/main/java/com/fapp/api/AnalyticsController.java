@@ -10,6 +10,13 @@ import com.fapp.analytics.LargestExpense;
 import com.fapp.analytics.MonthlySummary;
 import com.fapp.analytics.SavingsPot;
 import com.fapp.analytics.PeriodComparison;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/users/{userId}/analytics")
+@Tag(name = "Analytics", description = "Financial analytics and reporting")
 class AnalyticsController {
 
     private final AnalyticsService analytics;
@@ -46,6 +54,15 @@ class AnalyticsController {
 
     /** Income, expenditure, net savings and how many movements produced them. */
     @GetMapping("/summary")
+    @Operation(summary = "Get financial summary",
+            description = "Returns income, expenditure, net savings and transaction counts for the specified period")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Financial summary",
+                    content = @Content(schema = @Schema(implementation = FinancialSummary.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid or missing authentication credentials"),
+            @ApiResponse(responseCode = "422", description = "Mixed currency accounts cannot be compared")
+    })
+    @SecurityRequirement(name = "basicAuth")
     FinancialSummary summary(@PathVariable UUID userId,
                              @RequestParam(required = false) UUID accountId,
                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
