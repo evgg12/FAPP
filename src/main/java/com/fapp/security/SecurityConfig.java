@@ -56,6 +56,10 @@ class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users").permitAll()
                         // Liveness, which must answer without a credential.
                         .requestMatchers("/api/health").permitAll()
+                        // OpenAPI documentation endpoints.
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs.yaml", "/v3/api-docs/**").permitAll()
+                        // Swagger UI and its resources.
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/swagger-resources/**", "/webjars/**").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
